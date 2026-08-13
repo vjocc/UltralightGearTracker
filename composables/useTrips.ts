@@ -58,6 +58,37 @@ export interface TripState {
   error: string | null;
 }
 
+/**
+ * P3.3 client-side predicate mirroring the server-side `trip_visible_to()`
+ * helper (P2) — used by the page to decide whether to render the recap
+ * section before the first GET round-trip fires. The RLS SELECT policies
+ * on `trip_recaps` + `trip_recap_photos` (P3) and the trips SELECT policy
+ * (P2) remain the source of truth; this is purely a UI gate.
+ *
+ * Returns `true` for:
+ *   - owner (`state.current.user_id === viewerUserId`)
+ *   - anyone on the trip detail page (the page's `get()` call only
+ *     succeeds when the trips SELECT policy passes — owner, accepted
+ *     invitee, or accepted friend of the owner).
+ *
+ * Returns `false` for a stranger who somehow reached the page without
+ * a loaded `state.current`, or when no session is present.
+ */
+export function canViewRecap(
+  trip: TripWithGear | null | undefined,
+  viewerUserId: string | null | undefined,
+): boolean {
+  if (!trip || !viewerUserId) return false;
+  // The trip SELECT policy is restricted to owner + accepted invitee +
+  // accepted friend (P2); reaching this page with `trip` populated
+  // implies the viewer is one of those three. The recap + photo SELECT
+  // policies additionally require `trip_visible_to()` to be true
+  // (P3) — which is satisfied by the same set. So a populated `trip`
+  // + a non-null viewer is sufficient for the UI gate; the server
+  // does the row-level check.
+  return true;
+}
+
 /** Local-only id prefix so we can identify optimistic placeholders. */
 const TRIP_COMMENT_PENDING_PREFIX = 'trip-pending-';
 

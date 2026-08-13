@@ -539,6 +539,20 @@ const isOwnerViewer = computed(
   () => !!user.value && state.value.current?.user_id === user.value.id,
 );
 
+// P3.3 — gate the recap section by reachability, not ownership. The
+// trip SELECT policy (P2) restricts /trips/:id to owner + accepted
+// invitee + accepted friend, so reaching this page with a populated
+// `state.current` already implies `trip_visible_to()` is true. The
+// recap + photo SELECT policies (P3) gate the rows themselves with
+// the same helper, so once we're here the GET endpoint either returns
+// the recap (public OR trip_visible_to = true) or `null` (stranger).
+// This computed replaces the previous owner-only gate so accepted
+// invitees + friends see the read-only preview block (the existing
+// `v-else-if="recap"` branch below).
+const canViewRecap = computed(
+  () => !!state.value.current && !!user.value,
+);
+
 // Acceptable caption length is 500 — surface the live counter only when
 // near the cap so the form doesn't add visual noise for short captions.
 const captionLength = (s: string | null | undefined): number => s?.length ?? 0;
@@ -708,10 +722,12 @@ onMounted(async () => {
             :disabled="gpxUploading"
             @click="triggerGpxPicker"
           >
-            <span
+            <AppSpinner
               v-if="gpxUploading"
-              class="mr-2 inline-block h-3 w-3 rounded-full border-2 border-bark-700/30 border-t-bark-700 animate-spin"
-              aria-hidden="true"
+              class="mr-2"
+              size="sm"
+              color="bark"
+              label="Feltöltés folyamatban"
             />
             {{ gpxUploading ? 'Feltöltés…' : 'Új .gpx feltöltése' }}
           </button>
@@ -776,10 +792,11 @@ onMounted(async () => {
             :aria-busy="gpxUploading ? 'true' : 'false'"
             @click="triggerGpxPicker"
           >
-            <span
+            <AppSpinner
               v-if="gpxUploading"
-              class="mr-2 inline-block h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin"
-              aria-hidden="true"
+              class="mr-2"
+              color="bark"
+              label="Feltöltés folyamatban"
             />
             {{ gpxUploading ? 'Feltöltés…' : 'Tervem feltöltése .gpx' }}
           </button>
@@ -819,9 +836,12 @@ onMounted(async () => {
         + fotó grid (upload + drag-and-drop reorder + caption + törlés).
         Non-owner: read-only preview, amennyiben a recap public = true
         VAGY a trip_visible_to (P2) alapján látható.
+        P3.3 gate: was `isOwnerViewer`; now `canViewRecap` (reachability)
+        so accepted invitees + friends also render the read-only branch
+        below (`v-else-if="recap"`).
       -->
       <section
-        v-if="isOwnerViewer"
+        v-if="canViewRecap"
         class="rounded-lg border border-clay-200 bg-sand-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
         aria-label="Túra-élménybeszámoló"
       >
@@ -884,10 +904,12 @@ onMounted(async () => {
             :disabled="recapSaving"
             @click="saveRecap"
           >
-            <span
+            <AppSpinner
               v-if="recapSaving"
-              class="mr-2 inline-block h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin"
-              aria-hidden="true"
+              class="mr-2"
+              size="sm"
+              color="bark"
+              label="Mentés folyamatban"
             />
             {{ hasRecap ? 'Mentés' : 'Létrehozás' }}
           </button>
@@ -910,10 +932,12 @@ onMounted(async () => {
               :disabled="photoUploading"
               @click="triggerPhotoPicker"
             >
-              <span
+              <AppSpinner
                 v-if="photoUploading"
-                class="mr-2 inline-block h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin"
-                aria-hidden="true"
+                class="mr-2"
+                size="sm"
+                color="bark"
+                label="Feltöltés folyamatban"
               />
               {{ photoUploading ? 'Feltöltés…' : 'Fotó hozzáadása' }}
             </button>
@@ -1151,10 +1175,12 @@ onMounted(async () => {
             class="inline-flex items-center rounded-md bg-moss-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-moss-800 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-moss-300"
             :disabled="!canInvite || inviteSubmitting"
           >
-            <span
+            <AppSpinner
               v-if="inviteSubmitting"
-              class="mr-2 inline-block h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin"
-              aria-hidden="true"
+              class="mr-2"
+              size="sm"
+              color="bark"
+              label="Meghívó küldése folyamatban"
             />
             {{ inviteSubmitting ? 'Hívás…' : 'Invite' }}
           </button>
