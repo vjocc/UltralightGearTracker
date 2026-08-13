@@ -347,6 +347,72 @@ export interface EmailLookupResult {
 }
 
 /**
+ * Trip recap row (see supabase/migrations/20260813140000_trip_recap.sql).
+ * One row per trip (`unique (trip_id)`) carrying the post-trip
+ * élménybeszámoló body, a 0..10 satisfaction rating, and a public privacy
+ * toggle that widens visibility to all accepted friends of the owner.
+ *
+ * Visibility (RLS): owner OR `public = true` OR `trip_visible_to(trip_id)`
+ * (owner + accepted invitee + accepted friend, from P2).
+ */
+export interface TripRecapRow {
+  id: UUID;
+  trip_id: UUID;
+  body: string | null;
+  rating_out_of_10: number | null;
+  public: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TripRecapInsert {
+  trip_id: UUID;
+  body?: string | null;
+  rating_out_of_10?: number | null;
+  public?: boolean;
+}
+
+export interface TripRecapUpdate {
+  body?: string | null;
+  rating_out_of_10?: number | null;
+  public?: boolean;
+}
+
+/**
+ * Trip recap photo row (see supabase/migrations/20260813140000_trip_recap.sql).
+ * The `storage_path` encodes `{user_id}/{trip_id}/{recap_id}/{photo_id}.{ext}`
+ * — the server builds it on upload so the storage.objects RLS can match on
+ * the leading `auth.uid()` prefix. `public_url` is the
+ * `supabase.storage.from('trip-photos').getPublicUrl(storage_path)` result
+ * joined by the server endpoint (the `trip-photos` bucket is public-read, so
+ * the signed-URL dance is unnecessary).
+ */
+export interface TripRecapPhotoRow {
+  id: UUID;
+  trip_id: UUID;
+  recap_id: UUID;
+  storage_path: string;
+  caption: string | null;
+  display_order: number;
+  created_at: string;
+  /** Server-computed public URL; only present in /api/recap.get responses. */
+  public_url?: string;
+}
+
+export interface TripRecapPhotoInsert {
+  trip_id: UUID;
+  recap_id: UUID;
+  storage_path: string;
+  caption?: string | null;
+  display_order?: number;
+}
+
+export interface TripRecapPhotoUpdate {
+  caption?: string | null;
+  display_order?: number;
+}
+
+/**
  * Database shape consumed by @nuxtjs/supabase's typed client.
  *
  * Implementation note — `GenericTable` compatibility:
@@ -433,6 +499,8 @@ export interface Database {
       gpx_track_points: TableShape<GpxTrackPointRow>;
       trip_share_invites: TableShape<TripShareInviteRow>;
       trip_comments: TableShape<TripCommentRow>;
+      trip_recaps: TableShape<TripRecapRow>;
+      trip_recap_photos: TableShape<TripRecapPhotoRow>;
     };
     Views: {
       gear_base_weights_view: ViewShape<GearBaseWeightRow>;

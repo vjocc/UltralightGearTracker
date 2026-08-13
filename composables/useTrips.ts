@@ -22,12 +22,18 @@ import type {
   TripShareInviteRow,
   TripCommentRow,
   TripCommentRowWithPending,
+  TripRecapRow,
+  TripRecapPhotoRow,
   EmailLookupResult,
 } from '~/types/db';
 import type {
   TripGearAddInput,
   TripGearUpdateInput,
 } from '~/shared/tripSchemas';
+import type {
+  RecapPatchInput,
+  PhotoPatchInput,
+} from '~/shared/recapSchemas';
 import type { InviteCreateInput } from '~/shared/tripShareSchemas';
 
 export interface TripState {
@@ -39,6 +45,15 @@ export interface TripState {
   commentsByTripId: Record<string, TripCommentRowWithPending[]>;
   /** Resolved comment-author emails keyed by user_id (shared w/ useGearComments cache namespace is fine — keys are uuid). */
   emailById: Record<string, string>;
+  /**
+   * Per-trip recap + photos, keyed by trip_id. Same shape as the
+   * GET /api/trips/:id/recap response (recap nullable, photos always an
+   * array — empty if no recap yet).
+   */
+  recapByTripId: Record<
+    string,
+    { recap: TripRecapRow | null; photos: TripRecapPhotoRow[] }
+  >;
   loading: boolean;
   error: string | null;
 }
@@ -57,6 +72,7 @@ export function useTrips() {
     invitesByTripId: {},
     commentsByTripId: {},
     emailById: {},
+    recapByTripId: {},
     loading: false,
     error: null,
   }));
@@ -610,6 +626,252 @@ export function useTrips() {
     }
   };
 
+  // -------------------------------------------------------------------------
+  // P3 Trip recap + photos (Architect §D)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Loads (or refreshes) the recap + photos for a trip into
+   * `state.recapByTripId[tripId]`. RLS SELECT lets non-owners see public
+   * recaps and ones shared via trip_visible_to; an unauthorized caller
+   * gets `{ recap: null, photos: [] }` instead of an error.
+   */
+  const getRecap = async (tripId: string) => {
+    state.value.error = null;
+    try {
+      const result = await $fetch<{
+        recap: TripRecapRow | null;
+        photos: TripRecapPhotoRow[];
+      }>(`/api/trips/${tripId}/recap`);
+      state.value.recapByTripId[tripId] = result ?? {
+        recap: null,
+        photos: [],
+      };
+      return result;
+    } catch (e) {
+      setError(e);
+      throw e;
+    }
+  };
+
+  /**
+   * Upsert: insert if missing, update if present. The server's POST
+   * endpoint uses `onConflict: 'trip_id'` so either path is a single call.
+   */
+  const upsertRecap = async (
+    tripId: string,
+    patch: {
+      body?: string | null;
+      rating_out_of_10?: number | null;
+      public?: boolean;
+    },
+  ) => {
+    state.value.error = null;
+    try {
+      const row = await $fetch<TripRecapRow>(
+        `/api/trips/${tripId}/recap`,
+        { method: 'POST', body: patch },
+      );
+      const cur = state.value.recapByTripId[tripId] ?? {
+        recap: null,
+        photos: [],
+      };
+      state.value.recapByTripId[tripId] = { ...cur, recap: row };
+      return row;
+    } catch (e) {
+      setError(e);
+      throw e;
+    }
+  };
+
+  /**
+   * Partial update on an existing recap. Same payload shape as upsertRecap;
+   * server-side PATCH enforces the rating_out_of_10 CHECK.
+   */
+  const updateRecap = async (tripId: string, patch: RecapPatchInput) => {
+    state.value.error = null;
+    try {
+      const row = await $fetch<TripRecapRow>(
+        `/api/trips/${tripId}/recap`,
+        { method: 'PATCH', body: patch },
+      );
+      const cur = state.value.recapByTripId[tripId] ?? {
+        recap: null,
+        photos: [],
+      };
+      state.value.recapByTripId[tripId] = { ...cur, recap: row };
+      return row;
+    } catch (e) {
+      setError(e);
+      throw e;
+    }
+  };
+
+  /**
+   * Hard delete the recap row + cascade-remove photos metadata + best-effort
+   * storage cleanup. Local cache key is removed so the UI flips back to
+   * the "no recap yet" empty state.
+   */
+  const deleteRecap = async (tripId: string) => {
+    state.value.error = null;
+    try {
+      await $fetch(`/api/trips/${tripId}/recap`, { method: 'DELETE' });
+      delete state.value.recapByTripId[tripId];
+    } catch (e) {
+      setError(e);
+      throw e;
+    }
+  };
+
+  /**
+   * Uploads one image (jpeg/png/webp, max 5 MB) as a trip_recap_photos row.
+   * Returns the new photo + its public URL. On success, the photo is merged
+   * into `state.recapByTripId[tripId].photos` (sorted by display_order).
+   */
+  const uploadPhoto = async (
+    tripId: string,
+    file: File,
+    caption?: string,
+  ) => {
+    state.value.error = null;
+    const fd = new FormData();
+    fd.append('file', file, file.name);
+    if (caption !== undefined) {
+      fd.append('caption', caption);
+    }
+    try {
+      const result = await $fetch<{
+        photo: TripRecapPhotoRow;
+        publicUrl: string;
+      }>(`/api/trips/${tripId}/recap/photos`, {
+        method: 'POST',
+        body: fd,
+      });
+      const cur = state.value.recapByTripId[tripId] ?? {
+        recap: null,
+        photos: [],
+      };
+      const nextPhotos = [...cur.photos, result.photo].sort(
+        (a, b) => a.display_order - b.display_order,
+      );
+      state.value.recapByTripId[tripId] = {
+        recap: cur.recap,
+        photos: nextPhotos,
+      };
+      return result;
+    } catch (e) {
+      setError(e);
+      throw e;
+    }
+  };
+
+  /**
+   * Updates display_order on a single photo. Local cache is reordered so
+   * the grid re-renders immediately. The endpoint accepts display_order OR
+   * caption (or both).
+   */
+  const reorderPhoto = async (
+    tripId: string,
+    photoId: string,
+    newOrder: number,
+  ) => {
+    state.value.error = null;
+    try {
+      const payload: PhotoPatchInput = { display_order: newOrder };
+      const row = await $fetch<TripRecapPhotoRow>(
+        `/api/trips/${tripId}/recap/photos/${photoId}`,
+        { method: 'PATCH', body: payload },
+      );
+      const cur = state.value.recapByTripId[tripId] ?? {
+        recap: null,
+        photos: [],
+      };
+      const nextPhotos = cur.photos
+        .map((p) => (p.id === photoId ? row : p))
+        .sort((a, b) => a.display_order - b.display_order);
+      state.value.recapByTripId[tripId] = {
+        recap: cur.recap,
+        photos: nextPhotos,
+      };
+      return row;
+    } catch (e) {
+      setError(e);
+      throw e;
+    }
+  };
+
+  /**
+   * Update a photo's caption. Same endpoint as reorder; only the `caption`
+   * field is sent.
+   */
+  const updatePhotoCaption = async (
+    tripId: string,
+    photoId: string,
+    caption: string,
+  ) => {
+    state.value.error = null;
+    try {
+      const payload: PhotoPatchInput = { caption };
+      const row = await $fetch<TripRecapPhotoRow>(
+        `/api/trips/${tripId}/recap/photos/${photoId}`,
+        { method: 'PATCH', body: payload },
+      );
+      const cur = state.value.recapByTripId[tripId] ?? {
+        recap: null,
+        photos: [],
+      };
+      const nextPhotos = cur.photos.map((p) =>
+        p.id === photoId ? row : p,
+      );
+      state.value.recapByTripId[tripId] = {
+        recap: cur.recap,
+        photos: nextPhotos,
+      };
+      return row;
+    } catch (e) {
+      setError(e);
+      throw e;
+    }
+  };
+
+  /**
+   * Removes a photo row + its storage object. Looks up the tripId from the
+   * local cache so the caller doesn't need to track both ids.
+   */
+  const deletePhoto = async (photoId: string) => {
+    state.value.error = null;
+    // Find the tripId this photo belongs to in the cache.
+    let ownerTripId: string | null = null;
+    for (const [tid, entry] of Object.entries(state.value.recapByTripId)) {
+      if (entry.photos.some((p) => p.id === photoId)) {
+        ownerTripId = tid;
+        break;
+      }
+    }
+    if (!ownerTripId) {
+      // Photo isn't in cache — best-effort: caller is expected to know.
+      throw createError({
+        statusCode: 404,
+        statusMessage: 'A fotó nem található a cache-ben',
+      });
+    }
+    try {
+      await $fetch(`/api/trips/${ownerTripId}/recap/photos/${photoId}`, {
+        method: 'DELETE',
+      });
+      const cur = state.value.recapByTripId[ownerTripId];
+      if (cur) {
+        state.value.recapByTripId[ownerTripId] = {
+          ...cur,
+          photos: cur.photos.filter((p) => p.id !== photoId),
+        };
+      }
+    } catch (e) {
+      setError(e);
+      throw e;
+    }
+  };
+
   const resetError = () => {
     state.value.error = null;
   };
@@ -638,6 +900,14 @@ export function useTrips() {
     resolveEmailsForTrip,
     tripCommentAuthorEmail,
     listIncomingInvites,
+    getRecap,
+    upsertRecap,
+    updateRecap,
+    deleteRecap,
+    uploadPhoto,
+    reorderPhoto,
+    updatePhotoCaption,
+    deletePhoto,
     resetError,
   };
 }
