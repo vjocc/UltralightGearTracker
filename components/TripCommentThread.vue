@@ -26,7 +26,6 @@ const props = defineProps<{
 
 const {
   state,
-  listTripComments,
   addTripComment,
   updateTripComment,
   removeTripComment,
@@ -49,9 +48,8 @@ const canSubmit = computed(
   () => trimmedDraftLength.value > 0 && trimmedDraftLength.value <= 2000,
 );
 
-onMounted(async () => {
-  await listTripComments(props.tripId);
-});
+// P3.2 — listTripComments is now fired from the page onMounted so we
+// don't double-fetch when both the page and the component mount.
 
 const submit = async () => {
   if (!canSubmit.value || submitting.value) return;

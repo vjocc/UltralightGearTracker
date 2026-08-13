@@ -22,7 +22,7 @@
  *     … · Becsült idő: …") plus a small 200×100 SVG track preview
  *     fetched from /api/trips/:id/map on demand.
  */
-import type { TripRow } from '~/types/db';
+import type { TripRow, UUID } from '~/types/db';
 
 definePageMeta({
   title: 'Trip',
@@ -44,7 +44,11 @@ const {
   // P2 Social
   inviteByEmail,
   listInvites,
+  acceptInvite,
+  declineInvite,
   removeInvite,
+  listTripComments,
+  listParticipants,
   // P3 Recap + photos
   getRecap,
   upsertRecap,
@@ -331,11 +335,96 @@ const handleRemoveInvite = async (inviteId: string) => {
   }
 };
 
+// P3.2 — invite status label shared between the Meghívók panel and the
+// Meghívó banner. Stays Hungarian for owner-side list rows, English
+// for the existing invite <ul> badge.
 const inviteStatusLabel = (s: string): string => {
   if (s === 'pending') return 'pending';
   if (s === 'accepted') return 'elfogadva';
   if (s === 'declined') return 'elutasítva';
   return s;
+};
+
+// P3.2 — pending invite addressed to the signed-in viewer. Used by
+// the Meghívó banner. Non-null when the current user has a `pending`
+// row on this trip where `invitee_user_id === user.id`.
+const myPendingInvite = computed(() => {
+  const me = user.value?.id;
+  if (!me) return null;
+  const list = invites.value;
+  return list.find((i) => i.invitee_user_id === me && i.status === 'pending') ?? null;
+});
+
+// P3.2 — inviter email for the Meghívó banner. Falls back to the
+// invitee_email (owner's signup email) if the lookup cache doesn't
+// have it yet.
+const inviterEmailForMyInvite = computed(() => {
+  const inv = myPendingInvite.value;
+  if (!inv) return null;
+  return state.value.emailById[inv.inviter_id] ?? null;
+});
+
+// P3.2 — per-status invite buckets for the owner-only Meghívók panel.
+// The pending list also doubles as the source for the Barátok
+// meghívása szekció "Mégse" button.
+const pendingInvites = computed(
+  () => invites.value.filter((i) => i.status === 'pending'),
+);
+const acceptedInvites = computed(
+  () => invites.value.filter((i) => i.status === 'accepted'),
+);
+const declinedInvites = computed(
+  () => invites.value.filter((i) => i.status === 'declined'),
+);
+
+// P3.2 — Résztvevők szekció. Sourced from the cached
+// participantsByTripId (owner + accepted invitees with resolved
+// emails). Read-only when the viewer is not the trip owner (no
+// invite / remove controls).
+const participants = computed(
+  () => state.value.participantsByTripId[tripId.value] ?? [],
+);
+
+// P3.2 — Accept/Decline handlers for the Meghívó banner. The server
+// endpoint returns 409 when the invite is not in pending state, so we
+// re-fetch the accepted list to refresh the Résztvevők list.
+const acceptingInvite = ref(false);
+const decliningInvite = ref(false);
+
+const handleAcceptMyInvite = async () => {
+  const inv = myPendingInvite.value;
+  if (!inv || acceptingInvite.value || decliningInvite.value) return;
+  acceptingInvite.value = true;
+  try {
+    await acceptInvite(tripId.value, inv.id);
+    // Refresh the participant list so the accepted invitee appears
+    // immediately in the Résztvevők szekció.
+    await listParticipants(tripId.value).catch(() => undefined);
+  } catch {
+    // surfaced via state.error
+  } finally {
+    acceptingInvite.value = false;
+  }
+};
+
+const handleDeclineMyInvite = async () => {
+  const inv = myPendingInvite.value;
+  if (!inv || acceptingInvite.value || decliningInvite.value) return;
+  decliningInvite.value = true;
+  try {
+    await declineInvite(tripId.value, inv.id);
+  } catch {
+    // surfaced via state.error
+  } finally {
+    decliningInvite.value = false;
+  }
+};
+
+// P3.2 — when the owner removes an accepted invite, refresh the
+// participants list so the row drops immediately.
+const handleRemoveInviteAndRefresh = async (inviteId: UUID) => {
+  await handleRemoveInvite(inviteId);
+  await listParticipants(tripId.value).catch(() => undefined);
 };
 
 // --- Trip recap + photos (P3) ---------------------------------------------
@@ -546,9 +635,13 @@ const isOwnerViewer = computed(
 // recap + photo SELECT policies (P3) gate the rows themselves with
 // the same helper, so once we're here the GET endpoint either returns
 // the recap (public OR trip_visible_to = true) or `null` (stranger).
-// This computed replaces the previous owner-only gate so accepted
-// invitees + friends see the read-only preview block (the existing
-// `v-else-if="recap"` branch below).
+// The outer gate `canViewRecap` (reachability) renders the recap
+// section; the inner `isOwnerViewer` gate restricts the full edit
+// UI (textarea, slider, toggle, save/delete, photo upload, drag-
+// reorder, caption edit, photo delete) to the trip owner. Non-owner
+// viewers (accepted invitee / accepted friend) see a read-only
+// preview (body szöveg + rating badge + photo grid, no edit
+// controls) inside the same section.
 const canViewRecap = computed(
   () => !!state.value.current && !!user.value,
 );
@@ -570,8 +663,19 @@ onMounted(async () => {
     // to fire-and-forget: useTripWeight stores its own error state and
     // the panel renders the empty/error branch on its own.
     fetchTripWeight(),
-    // P2 Social — load the trip's invites (owner sees pending).
+    // P3.2 — fan out all invite statuses + participants so the new
+    // Résztvevők + Meghívó banner + Meghívók panel sections render
+    // without a second round-trip on first interaction. Errors are
+    // swallowed (each sub-section has its own empty state); only the
+    // trip detail fetch failure navigates back.
     listInvites(tripId.value, 'pending').catch(() => undefined),
+    listInvites(tripId.value, 'accepted').catch(() => undefined),
+    listInvites(tripId.value, 'declined').catch(() => undefined),
+    listParticipants(tripId.value).catch(() => undefined),
+    // P3.2 — moved from TripCommentThread.onMounted so the comment
+    // thread doesn't double-fetch when both the page and component
+    // mount.
+    listTripComments(tripId.value).catch(() => undefined),
     // P3 Recap — load recap + photos so the preview shows immediately.
     // The endpoint returns `{recap: null, photos: []}` if no row exists
     // yet, which we tolerate silently.
@@ -832,13 +936,15 @@ onMounted(async () => {
 
       <!--
         P3 Túra-élménybeszámoló + fotók (Architect §E).
-        Owner: szerkeszthető űrlap (body + rating slider + public toggle)
-        + fotó grid (upload + drag-and-drop reorder + caption + törlés).
-        Non-owner: read-only preview, amennyiben a recap public = true
-        VAGY a trip_visible_to (P2) alapján látható.
-        P3.3 gate: was `isOwnerViewer`; now `canViewRecap` (reachability)
-        so accepted invitees + friends also render the read-only branch
-        below (`v-else-if="recap"`).
+        P3.3 round-2: külső gate `canViewRecap` (reachability — owner +
+        accepted invitee + accepted friend) MARAD. A belső
+        owner-only vezérlők (textarea, rating slider, public toggle,
+        Mentés/Törlés, Fotó hozzáadása, drag-reorder, caption edit,
+        photo delete) `isOwnerViewer` alá kerülnek vissza, hogy ne
+        jelenjenek meg accepted invitee / friend of owner számára.
+        Non-owner a `canViewRecap` gate-en belül read-only preview-t
+        kap (body szöveg + rating badge + photo grid, upload /
+        reorder / delete gombok nélkül).
       -->
       <section
         v-if="canViewRecap"
@@ -847,151 +953,257 @@ onMounted(async () => {
       >
         <header class="flex items-baseline justify-between gap-2">
           <h3 class="text-sm font-semibold tracking-tight text-bark-900">
-            Túra-élménybeszámoló
+            {{ isOwnerViewer ? 'Túra-élménybeszámoló' : 'Beszámoló' }}
           </h3>
           <span
-            v-if="recap?.public"
+            v-if="isOwnerViewer && recap?.public"
             class="rounded border border-moss-300 bg-moss-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-moss-900"
           >
             Publikus
           </span>
+          <span
+            v-else-if="!isOwnerViewer && recap && recap.rating_out_of_10 !== null && recap.rating_out_of_10 !== undefined"
+            class="rounded border border-clay-300 bg-clay-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-clay-900 tabular-nums"
+          >
+            Élmény: {{ recap.rating_out_of_10 }} / 10
+          </span>
         </header>
-        <p class="mt-1 text-xs italic text-loam-500">
+        <p
+          v-if="isOwnerViewer"
+          class="mt-1 text-xs italic text-loam-500"
+        >
           Komfort is számít, nem csak a könnyű súly.
         </p>
 
-        <label class="mt-3 block">
-          <span class="sr-only">Beszámoló szövege</span>
-          <textarea
-            v-model="recapBody"
-            rows="6"
-            class="input w-full"
-            maxlength="20000"
-            placeholder="Hogy sikerült a túra? Mi volt a csúcspont, mi a tanulság?"
-          />
-        </label>
-
-        <div class="mt-3 flex flex-wrap items-center gap-4">
-          <label class="flex flex-1 min-w-[180px] items-center gap-3 text-xs text-bark-700">
-            <span class="whitespace-nowrap font-medium">Élmény (0-10):</span>
-            <input
-              v-model.number="recapRating"
-              type="range"
-              min="0"
-              max="10"
-              step="1"
-              class="flex-1 accent-moss-600"
-              aria-label="Túra élmény értékelés 0-10"
+        <!--
+          Owner-only szerkeszthető űrlap (body + rating slider + public
+          toggle + Mentés/Törlés + teljes fotó grid upload / drag-reorder /
+          caption edit / photo delete kontrollokkal).
+        -->
+        <template v-if="isOwnerViewer">
+          <label class="mt-3 block">
+            <span class="sr-only">Beszámoló szövege</span>
+            <textarea
+              v-model="recapBody"
+              rows="6"
+              class="input w-full"
+              maxlength="20000"
+              placeholder="Hogy sikerült a túra? Mi volt a csúcspont, mi a tanulság?"
             />
-            <span class="w-12 text-right tabular-nums font-semibold text-bark-900">
-              {{ recapRating ?? '–' }} / 10
-            </span>
           </label>
-          <label class="flex items-center gap-2 text-xs text-bark-700">
-            <input
-              v-model="recapPublic"
-              type="checkbox"
-              class="h-4 w-4 rounded border-clay-300 text-moss-700 focus:ring-moss-600"
-            />
-            <span>Publikus (barátok is olvashatják)</span>
-          </label>
-        </div>
 
-        <div class="mt-4 flex items-center gap-2">
-          <button
-            type="button"
-            class="inline-flex items-center rounded-md bg-moss-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-moss-800 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-moss-300"
-            :disabled="recapSaving"
-            @click="saveRecap"
-          >
-            <AppSpinner
-              v-if="recapSaving"
-              class="mr-2"
-              size="sm"
-              color="bark"
-              label="Mentés folyamatban"
-            />
-            {{ hasRecap ? 'Mentés' : 'Létrehozás' }}
-          </button>
-          <button
-            v-if="hasRecap"
-            type="button"
-            class="btn-danger px-3 py-1.5 text-sm"
-            @click="handleDeleteRecap"
-          >
-            Törlés
-          </button>
-        </div>
+          <div class="mt-3 flex flex-wrap items-center gap-4">
+            <label class="flex flex-1 min-w-[180px] items-center gap-3 text-xs text-bark-700">
+              <span class="whitespace-nowrap font-medium">Élmény (0-10):</span>
+              <input
+                v-model.number="recapRating"
+                type="range"
+                min="0"
+                max="10"
+                step="1"
+                class="flex-1 accent-moss-600"
+                aria-label="Túra élmény értékelés 0-10"
+              />
+              <span class="w-12 text-right tabular-nums font-semibold text-bark-900">
+                {{ recapRating ?? '–' }} / 10
+              </span>
+            </label>
+            <label class="flex items-center gap-2 text-xs text-bark-700">
+              <input
+                v-model="recapPublic"
+                type="checkbox"
+                class="h-4 w-4 rounded border-clay-300 text-moss-700 focus:ring-moss-600"
+              />
+              <span>Publikus (barátok is olvashatják)</span>
+            </label>
+          </div>
 
-        <!-- Fotók grid -->
-        <div class="mt-5">
-          <div class="flex flex-wrap items-center gap-2">
+          <div class="mt-4 flex items-center gap-2">
             <button
               type="button"
               class="inline-flex items-center rounded-md bg-moss-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-moss-800 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-moss-300"
-              :disabled="photoUploading"
-              @click="triggerPhotoPicker"
+              :disabled="recapSaving"
+              @click="saveRecap"
             >
               <AppSpinner
-                v-if="photoUploading"
+                v-if="recapSaving"
                 class="mr-2"
                 size="sm"
                 color="bark"
-                label="Feltöltés folyamatban"
+                label="Mentés folyamatban"
               />
-              {{ photoUploading ? 'Feltöltés…' : 'Fotó hozzáadása' }}
+              {{ hasRecap ? 'Mentés' : 'Létrehozás' }}
             </button>
-            <input
-              ref="photoFileInput"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              class="hidden"
-              aria-label="Túra fotó kiválasztása"
-              @change="onPhotoFileChange"
-            />
-            <span class="text-xs text-loam-500">
-              Max 5 MB, JPEG / PNG / WebP
-            </span>
+            <button
+              v-if="hasRecap"
+              type="button"
+              class="btn-danger px-3 py-1.5 text-sm"
+              @click="handleDeleteRecap"
+            >
+              Törlés
+            </button>
           </div>
 
-          <p
-            v-if="photoLocalError"
-            role="alert"
-            class="mt-2 flex items-start gap-2 rounded border border-clay-300 bg-bark-50 px-3 py-2 text-xs text-bark-700"
-          >
-            <span aria-hidden="true" class="mt-px text-clay-500">▲</span>
-            <span>{{ photoLocalError }}</span>
-          </p>
+          <!-- Fotók grid — owner: szerkeszthető (upload + reorder + caption + delete) -->
+          <div class="mt-5">
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                class="inline-flex items-center rounded-md bg-moss-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-moss-800 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-moss-300"
+                :disabled="photoUploading"
+                @click="triggerPhotoPicker"
+              >
+                <AppSpinner
+                  v-if="photoUploading"
+                  class="mr-2"
+                  size="sm"
+                  color="bark"
+                  label="Feltöltés folyamatban"
+                />
+                {{ photoUploading ? 'Feltöltés…' : 'Fotó hozzáadása' }}
+              </button>
+              <input
+                ref="photoFileInput"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                class="hidden"
+                aria-label="Túra fotó kiválasztása"
+                @change="onPhotoFileChange"
+              />
+              <span class="text-xs text-loam-500">
+                Max 5 MB, JPEG / PNG / WebP
+              </span>
+            </div>
 
+            <p
+              v-if="photoLocalError"
+              role="alert"
+              class="mt-2 flex items-start gap-2 rounded border border-clay-300 bg-bark-50 px-3 py-2 text-xs text-bark-700"
+            >
+              <span aria-hidden="true" class="mt-px text-clay-500">▲</span>
+              <span>{{ photoLocalError }}</span>
+            </p>
+
+            <p
+              v-if="photos.length === 0"
+              class="mt-3 text-xs italic text-loam-500"
+            >
+              Még nincs fotó. A beszámoló elkészülhet fotók nélkül is —
+              töltsd fel a legszebb pillanatokat, hogy emlékezetes maradjon.
+            </p>
+
+            <ul
+              v-else
+              class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3"
+            >
+              <li
+                v-for="(photo, idx) in photos"
+                :key="photo.id"
+                class="overflow-hidden rounded border border-clay-200 bg-white transition-all duration-200 hover:ring-1 hover:ring-moss-500 hover:scale-[1.01] hover:cursor-grab"
+                :class="dragPhotoId === photo.id ? 'ring-2 ring-moss-700 scale-[1.02] cursor-grabbing' : ''"
+                :draggable="true"
+                @dragstart="onDragStart(photo.id)"
+                @dragover="onDragOver($event)"
+                @drop="onDrop(idx)"
+                @dragend="onDragEnd"
+              >
+                <!--
+                  Ha nincs public_url (pl. a server nem dekorálta), esünk
+                  vissza egy monogram placeholder-re (két betű a photo id
+                  utolsó két hex karakteréből).
+                -->
+                <div class="relative h-48 w-full bg-clay-100">
+                  <img
+                    v-if="photo.public_url"
+                    :src="photo.public_url"
+                    :alt="photo.caption ?? 'Túra fotó'"
+                    class="h-full w-full object-cover"
+                  />
+                  <div
+                    v-else
+                    class="flex h-full w-full items-center justify-center text-2xl font-bold text-clay-700"
+                  >
+                    {{ (photo.id || '').slice(-2).toUpperCase() || 'M' }}
+                  </div>
+                  <span
+                    class="absolute left-2 top-2 rounded bg-bark-900/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sand-50"
+                    aria-hidden="true"
+                  >
+                    #{{ idx + 1 }}
+                  </span>
+                </div>
+                <div class="space-y-1 p-2">
+                  <input
+                    :value="captionDrafts[photo.id] ?? photo.caption ?? ''"
+                    type="text"
+                    class="input w-full text-xs"
+                    maxlength="500"
+                    placeholder="Monogram képaláírás…"
+                    @input="captionDrafts = { ...captionDrafts, [photo.id]: ($event.target as HTMLInputElement).value }"
+                  />
+                  <div class="flex items-center justify-between text-[10px] text-loam-500">
+                    <span v-if="captionLength(captionDrafts[photo.id] ?? photo.caption) > 400">
+                      {{ captionLength(captionDrafts[photo.id] ?? photo.caption) }} / 500
+                    </span>
+                    <span v-else>&nbsp;</span>
+                  </div>
+                  <div class="flex items-center justify-between gap-2">
+                    <button
+                      v-if="captionDrafts[photo.id] !== undefined && captionDrafts[photo.id] !== (photo.caption ?? '')"
+                      type="button"
+                      class="text-xs font-medium text-moss-700 underline disabled:opacity-60"
+                      :disabled="captionSaving[photo.id]"
+                      @click="saveCaption(photo.id)"
+                    >
+                      {{ captionSaving[photo.id] ? 'Mentés…' : 'Mentés' }}
+                    </button>
+                    <span v-else aria-hidden="true">&nbsp;</span>
+                    <button
+                      type="button"
+                      class="text-xs font-medium text-clay-700 underline"
+                      @click="handleDeletePhoto(photo.id)"
+                    >
+                      Törlés
+                    </button>
+                  </div>
+                </div>
+              </li>
+            </ul>
+            <p class="mt-2 text-[11px] text-loam-500">
+              Húzd el a kártyákat az átrendezéshez.
+            </p>
+          </div>
+        </template>
+
+        <!--
+          Non-owner read-only preview a canViewRecap gate-en belül:
+          csak body szöveg + rating badge + photo grid (captionnel, de
+          upload / reorder / caption-edit / photo-delete gombok NÉLKÜL).
+        -->
+        <template v-else>
           <p
-            v-if="photos.length === 0"
+            v-if="recap?.body"
+            class="mt-3 whitespace-pre-wrap text-sm text-bark-900"
+          >
+            {{ recap.body }}
+          </p>
+          <p
+            v-else
             class="mt-3 text-xs italic text-loam-500"
           >
-            Még nincs fotó. A beszámoló elkészülhet fotók nélkül is —
-            töltsd fel a legszebb pillanatokat, hogy emlékezetes maradjon.
+            A beszámoló még nem készült el.
           </p>
 
           <ul
-            v-else
-            class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3"
+            v-if="photos.length > 0"
+            class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3"
           >
             <li
-              v-for="(photo, idx) in photos"
+              v-for="photo in photos"
               :key="photo.id"
-              class="overflow-hidden rounded border border-clay-200 bg-white transition-all duration-200 hover:ring-1 hover:ring-moss-500 hover:scale-[1.01] hover:cursor-grab"
-              :class="dragPhotoId === photo.id ? 'ring-2 ring-moss-700 scale-[1.02] cursor-grabbing' : ''"
-              :draggable="true"
-              @dragstart="onDragStart(photo.id)"
-              @dragover="onDragOver($event)"
-              @drop="onDrop(idx)"
-              @dragend="onDragEnd"
+              class="overflow-hidden rounded border border-clay-200 bg-white"
             >
-              <!--
-                Ha nincs public_url (pl. a server nem dekorálta), esünk
-                vissza egy monogram placeholder-re (két betű a photo id
-                utolsó két hex karakteréből).
-              -->
-              <div class="relative h-48 w-full bg-clay-100">
+              <div class="h-48 w-full bg-clay-100">
                 <img
                   v-if="photo.public_url"
                   :src="photo.public_url"
@@ -1004,119 +1216,22 @@ onMounted(async () => {
                 >
                   {{ (photo.id || '').slice(-2).toUpperCase() || 'M' }}
                 </div>
-                <span
-                  class="absolute left-2 top-2 rounded bg-bark-900/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sand-50"
-                  aria-hidden="true"
-                >
-                  #{{ idx + 1 }}
-                </span>
               </div>
-              <div class="space-y-1 p-2">
-                <input
-                  :value="captionDrafts[photo.id] ?? photo.caption ?? ''"
-                  type="text"
-                  class="input w-full text-xs"
-                  maxlength="500"
-                  placeholder="Monogram képaláírás…"
-                  @input="captionDrafts = { ...captionDrafts, [photo.id]: ($event.target as HTMLInputElement).value }"
-                />
-                <div class="flex items-center justify-between text-[10px] text-loam-500">
-                  <span v-if="captionLength(captionDrafts[photo.id] ?? photo.caption) > 400">
-                    {{ captionLength(captionDrafts[photo.id] ?? photo.caption) }} / 500
-                  </span>
-                  <span v-else>&nbsp;</span>
-                </div>
-                <div class="flex items-center justify-between gap-2">
-                  <button
-                    v-if="captionDrafts[photo.id] !== undefined && captionDrafts[photo.id] !== (photo.caption ?? '')"
-                    type="button"
-                    class="text-xs font-medium text-moss-700 underline disabled:opacity-60"
-                    :disabled="captionSaving[photo.id]"
-                    @click="saveCaption(photo.id)"
-                  >
-                    {{ captionSaving[photo.id] ? 'Mentés…' : 'Mentés' }}
-                  </button>
-                  <span v-else aria-hidden="true">&nbsp;</span>
-                  <button
-                    type="button"
-                    class="text-xs font-medium text-clay-700 underline"
-                    @click="handleDeletePhoto(photo.id)"
-                  >
-                    Törlés
-                  </button>
-                </div>
-              </div>
+              <p
+                v-if="photo.caption"
+                class="px-2 py-1 text-xs text-bark-700"
+              >
+                {{ photo.caption }}
+              </p>
+              <p
+                v-else
+                class="px-2 py-1 text-xs italic text-loam-500"
+              >
+                Monogram fotó
+              </p>
             </li>
           </ul>
-          <p class="mt-2 text-[11px] text-loam-500">
-            Húzd el a kártyákat az átrendezéshez.
-          </p>
-        </div>
-      </section>
-
-      <!--
-        Non-owner read-only preview. Csak akkor jelenik meg, ha van recap
-        ÉS (recap.public = true VAGY trip_visible_to alapján látható —
-        ez utóbbit a server-side RLS garantálja, a GET hívás 200-zal
-        jön vissza csak ilyenkor).
-      -->
-      <section
-        v-else-if="recap"
-        class="rounded-lg border border-clay-200 bg-sand-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
-        aria-label="Túra beszámoló"
-      >
-        <header class="flex items-baseline justify-between gap-2">
-          <h3 class="text-sm font-semibold tracking-tight text-bark-900">
-            Beszámoló
-          </h3>
-          <span
-            v-if="recap.rating_out_of_10 !== null && recap.rating_out_of_10 !== undefined"
-            class="rounded border border-clay-300 bg-clay-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-clay-900 tabular-nums"
-          >
-            Élmény: {{ recap.rating_out_of_10 }} / 10
-          </span>
-        </header>
-        <p class="mt-2 whitespace-pre-wrap text-sm text-bark-900">
-          {{ recap.body ?? '…' }}
-        </p>
-
-        <ul
-          v-if="photos.length > 0"
-          class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3"
-        >
-          <li
-            v-for="photo in photos"
-            :key="photo.id"
-            class="overflow-hidden rounded border border-clay-200 bg-white"
-          >
-            <div class="h-48 w-full bg-clay-100">
-              <img
-                v-if="photo.public_url"
-                :src="photo.public_url"
-                :alt="photo.caption ?? 'Túra fotó'"
-                class="h-full w-full object-cover"
-              />
-              <div
-                v-else
-                class="flex h-full w-full items-center justify-center text-2xl font-bold text-clay-700"
-              >
-                {{ (photo.id || '').slice(-2).toUpperCase() || 'M' }}
-              </div>
-            </div>
-            <p
-              v-if="photo.caption"
-              class="px-2 py-1 text-xs text-bark-700"
-            >
-              {{ photo.caption }}
-            </p>
-            <p
-              v-else
-              class="px-2 py-1 text-xs italic text-loam-500"
-            >
-              Monogram fotó
-            </p>
-          </li>
-        </ul>
+        </template>
       </section>
 
       <div>
@@ -1136,7 +1251,122 @@ onMounted(async () => {
         />
       </div>
 
-      <!-- P2 Social — invite + comment thread. -->
+      <!-- P3.2 — Trip-share invite social surface -->
+      <!-- Sorrend (Architect B.2): Résztvevők (minden bejelentkezett user) →
+           Meghívó banner (invitee-only) → Barátok meghívása (owner-only,
+           korábbi P2 szekció, token polish) → Meghívók panel (owner-only,
+           pending/accepted/declined buckets). -->
+
+      <!-- Résztvevők szekció — minden bejelentkezett user látja, a
+           trip owner + accepted invitee sorokkal. Read-only ha a
+           néző nem owner (nincs invite/remove gomb). -->
+      <section
+        v-if="user && state.current"
+        class="rounded-lg border border-clay-200 bg-sand-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
+        aria-label="Résztvevők"
+      >
+        <header class="flex items-baseline justify-between">
+          <h3 class="text-sm font-semibold tracking-tight text-bark-900">
+            Résztvevők
+          </h3>
+          <span class="text-xs text-loam-500">
+            {{ participants.length }} fő
+          </span>
+        </header>
+        <p
+          v-if="participants.length === 0"
+          class="mt-2 text-xs text-loam-500"
+        >
+          Még nincs elfogadott résztvevő ezen a túrán.
+        </p>
+        <ul
+          v-else
+          class="mt-3 divide-y divide-clay-200 rounded border border-clay-200 bg-white"
+        >
+          <li
+            v-for="p in participants"
+            :key="p.id"
+            class="flex items-center justify-between gap-2 px-3 py-2 text-xs text-bark-700"
+          >
+            <span class="truncate font-medium">
+              {{ p.email ?? (p.user_id ? p.user_id.slice(0, 8) + '…' : 'ismeretlen') }}
+            </span>
+            <span
+              v-if="p.role === 'owner'"
+              class="shrink-0 rounded border border-moss-300 bg-moss-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-moss-900"
+            >
+              tulajdonos
+            </span>
+            <span
+              v-else
+              class="shrink-0 rounded border border-sand-300 bg-sand-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-bark-900"
+            >
+              elfogadva
+            </span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Meghívó banner — csak akkor jelenik meg, ha a bejelentkezett
+           usernek van pending invite-ja erre a túrára. Accept/Decline
+           gombok a meglévő acceptInvite / declineInvite composable
+           metódusokra. -->
+      <section
+        v-if="myPendingInvite"
+        class="rounded-lg border border-moss-300 bg-moss-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
+        aria-label="Meghívó"
+      >
+        <header>
+          <h3 class="text-sm font-semibold tracking-tight text-bark-900">
+            Meghívó érkezett
+          </h3>
+          <p class="mt-1 text-xs text-loam-500">
+            <template v-if="inviterEmailForMyInvite">
+              {{ inviterEmailForMyInvite }} meghívott erre a túrára.
+            </template>
+            <template v-else>
+              A túra tulajdonosa meghívott erre a túrára.
+            </template>
+          </p>
+        </header>
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            class="btn-primary px-3 py-1.5 text-sm"
+            :disabled="acceptingInvite || decliningInvite"
+            @click="handleAcceptMyInvite"
+          >
+            <AppSpinner
+              v-if="acceptingInvite"
+              class="mr-2"
+              size="sm"
+              color="bark"
+              label="Elfogadás folyamatban"
+            />
+            {{ acceptingInvite ? 'Elfogadás…' : 'Elfogadom' }}
+          </button>
+          <button
+            type="button"
+            class="btn-secondary px-3 py-1.5 text-sm"
+            :disabled="acceptingInvite || decliningInvite"
+            @click="handleDeclineMyInvite"
+          >
+            <AppSpinner
+              v-if="decliningInvite"
+              class="mr-2"
+              size="sm"
+              color="bark"
+              label="Elutasítás folyamatban"
+            />
+            {{ decliningInvite ? 'Elutasítás…' : 'Elutasítom' }}
+          </button>
+        </div>
+      </section>
+
+      <!-- Barátok meghívása — owner-only, meglévő P2 szekció, token
+           polish: .input + .btn-primary + .btn-secondary utility
+           stringek helyett. A pending invite-ok listája átkerült a
+           Meghívók panel alá. -->
       <section
         v-if="isTripOwner"
         class="rounded-lg border border-clay-200 bg-sand-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
@@ -1168,11 +1398,11 @@ onMounted(async () => {
             inputmode="email"
             autocomplete="email"
             placeholder="barát@példa.hu"
-            class="min-w-0 flex-1 rounded border border-clay-200 bg-white px-3 py-1.5 text-sm text-bark-900 focus:border-moss-600 focus:outline-none focus:ring-1 focus:ring-moss-600"
+            class="input min-w-0 flex-1 !mt-0"
           />
           <button
             type="submit"
-            class="inline-flex items-center rounded-md bg-moss-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-moss-800 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-moss-300"
+            class="btn-primary"
             :disabled="!canInvite || inviteSubmitting"
           >
             <AppSpinner
@@ -1185,51 +1415,155 @@ onMounted(async () => {
             {{ inviteSubmitting ? 'Hívás…' : 'Invite' }}
           </button>
         </form>
+      </section>
 
-        <ul
-          v-if="invites.length > 0"
-          class="mt-3 divide-y divide-clay-200 rounded border border-clay-200 bg-white"
+      <!-- Meghívók panel — owner-only, három <details> bucket-tel a
+           pending / accepted / declined invite-oknak. Pending soron
+           Függőben badge + Remove gomb; accepted/declined sorokon a
+           megfelelő badge + Remove gomb. -->
+      <section
+        v-if="isTripOwner"
+        class="rounded-lg border border-clay-200 bg-sand-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
+        aria-label="Meghívók"
+      >
+        <header class="flex items-baseline justify-between">
+          <h3 class="text-sm font-semibold tracking-tight text-bark-900">
+            Meghívók
+          </h3>
+          <span class="text-xs text-loam-500">
+            {{ invites.length }} összesen
+          </span>
+        </header>
+
+        <details
+          class="mt-3 rounded border border-clay-200 bg-white"
+          :open="pendingInvites.length > 0"
         >
-          <li
-            v-for="inv in invites"
-            :key="inv.id"
-            class="flex items-center justify-between gap-2 px-3 py-2 text-xs text-bark-700"
+          <summary
+            class="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-semibold text-bark-900"
           >
-            <span class="truncate font-medium">{{ inv.invitee_email }}</span>
-            <span
-              v-if="inv.status === 'pending'"
-              class="shrink-0 rounded border border-clay-300 bg-clay-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-clay-900"
-            >
-              {{ inviteStatusLabel(inv.status) }}
+            <span>Függőben</span>
+            <span class="rounded border border-clay-300 bg-clay-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-clay-900">
+              {{ pendingInvites.length }}
             </span>
-            <span
-              v-else-if="inv.status === 'accepted'"
-              class="shrink-0 rounded border border-moss-300 bg-moss-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-moss-900"
+          </summary>
+          <ul
+            v-if="pendingInvites.length > 0"
+            class="divide-y divide-clay-200 border-t border-clay-200"
+          >
+            <li
+              v-for="inv in pendingInvites"
+              :key="inv.id"
+              class="flex items-center justify-between gap-2 px-3 py-2 text-xs text-bark-700"
             >
-              {{ inviteStatusLabel(inv.status) }}
+              <span class="truncate font-medium">{{ inv.invitee_email }}</span>
+              <span
+                class="shrink-0 rounded border border-clay-300 bg-clay-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-clay-900"
+              >
+                {{ inviteStatusLabel(inv.status) }}
+              </span>
+              <button
+                type="button"
+                class="btn-secondary shrink-0 px-2 py-1 text-xs"
+                @click="handleRemoveInvite(inv.id)"
+              >
+                Mégse
+              </button>
+            </li>
+          </ul>
+          <p
+            v-else
+            class="border-t border-clay-200 px-3 py-2 text-xs italic text-loam-500"
+          >
+            Nincs függő meghívó.
+          </p>
+        </details>
+
+        <details
+          class="mt-2 rounded border border-clay-200 bg-white"
+        >
+          <summary
+            class="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-semibold text-bark-900"
+          >
+            <span>Elfogadva</span>
+            <span class="rounded border border-moss-300 bg-moss-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-moss-900">
+              {{ acceptedInvites.length }}
             </span>
-            <span
-              v-else-if="inv.status === 'declined'"
-              class="shrink-0 rounded border border-sand-300 bg-sand-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-bark-900"
+          </summary>
+          <ul
+            v-if="acceptedInvites.length > 0"
+            class="divide-y divide-clay-200 border-t border-clay-200"
+          >
+            <li
+              v-for="inv in acceptedInvites"
+              :key="inv.id"
+              class="flex items-center justify-between gap-2 px-3 py-2 text-xs text-bark-700"
             >
-              {{ inviteStatusLabel(inv.status) }}
+              <span class="truncate font-medium">{{ inv.invitee_email }}</span>
+              <span
+                class="shrink-0 rounded border border-moss-300 bg-moss-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-moss-900"
+              >
+                {{ inviteStatusLabel(inv.status) }}
+              </span>
+              <button
+                type="button"
+                class="btn-secondary shrink-0 px-2 py-1 text-xs"
+                @click="handleRemoveInviteAndRefresh(inv.id)"
+              >
+                Eltávolítás
+              </button>
+            </li>
+          </ul>
+          <p
+            v-else
+            class="border-t border-clay-200 px-3 py-2 text-xs italic text-loam-500"
+          >
+            Még senki nem fogadta el.
+          </p>
+        </details>
+
+        <details
+          class="mt-2 rounded border border-clay-200 bg-white"
+        >
+          <summary
+            class="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-semibold text-bark-900"
+          >
+            <span>Elutasítva</span>
+            <span class="rounded border border-sand-300 bg-sand-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-bark-900">
+              {{ declinedInvites.length }}
             </span>
-            <span
-              v-else
-              class="shrink-0 text-loam-500"
+          </summary>
+          <ul
+            v-if="declinedInvites.length > 0"
+            class="divide-y divide-clay-200 border-t border-clay-200"
+          >
+            <li
+              v-for="inv in declinedInvites"
+              :key="inv.id"
+              class="flex items-center justify-between gap-2 px-3 py-2 text-xs text-bark-700"
             >
-              {{ inviteStatusLabel(inv.status) }}
-            </span>
-            <button
-              v-if="inv.status === 'pending'"
-              type="button"
-              class="btn-secondary shrink-0 px-2 py-1 text-xs"
-              @click="handleRemoveInvite(inv.id)"
-            >
-              Mégse
-            </button>
-          </li>
-        </ul>
+              <span class="truncate font-medium">{{ inv.invitee_email }}</span>
+              <span
+                class="shrink-0 rounded border border-sand-300 bg-sand-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-bark-900"
+              >
+                {{ inviteStatusLabel(inv.status) }}
+              </span>
+              <button
+                type="button"
+                class="btn-secondary shrink-0 px-2 py-1 text-xs"
+                @click="handleRemoveInvite(inv.id)"
+              >
+                Eltávolítás
+              </button>
+            </li>
+          </ul>
+          <p
+            v-else
+            class="border-t border-clay-200 px-3 py-2 text-xs italic text-loam-500"
+          >
+            Senki nem utasította el.
+          </p>
+        </details>
       </section>
 
       <TripCommentThread

@@ -20,6 +20,7 @@ import type {
   TripGearRow,
   GpxMetadata,
   TripShareInviteRow,
+  TripParticipantRow,
   TripCommentRow,
   TripCommentRowWithPending,
   TripRecapRow,
@@ -43,6 +44,11 @@ export interface TripState {
   invitesByTripId: Record<string, TripShareInviteRow[]>;
   /** Per-trip comment lists, keyed by trip_id. */
   commentsByTripId: Record<string, TripCommentRowWithPending[]>;
+  /**
+   * Per-trip participant rows (owner + accepted invitees), keyed by trip_id.
+   * P3.2 — UI polish only; no new endpoint, derived from accepted invites + trip owner.
+   */
+  participantsByTripId: Record<string, TripParticipantRow[]>;
   /** Resolved comment-author emails keyed by user_id (shared w/ useGearComments cache namespace is fine — keys are uuid). */
   emailById: Record<string, string>;
   /**
@@ -102,6 +108,7 @@ export function useTrips() {
     current: null,
     invitesByTripId: {},
     commentsByTripId: {},
+    participantsByTripId: {},
     emailById: {},
     recapByTripId: {},
     loading: false,
@@ -629,6 +636,134 @@ export function useTrips() {
   const tripCommentAuthorEmail = (userId: string): string | null =>
     state.value.emailById[userId] ?? null;
 
+  // -------------------------------------------------------------------------
+  // P3.2 Trip-share invite social surface — UI polish
+  // -------------------------------------------------------------------------
+
+  /**
+   * Client-side predicate mirroring the server-side `trip_visible_to()`
+   * SECURITY DEFINER helper (P2). The RLS SELECT policies on `trips`,
+   * `trip_recaps`, and `trip_recap_photos` are the source of truth; this
+   * is a UI gate only — used to decide whether to render the trip detail
+   * sections before the first GET round-trip fires.
+   *
+   * Returns `true` when:
+   *   - the viewer is the trip owner
+   *   - the viewer has an accepted invite on this trip
+   *   - the viewer is an accepted friend of the trip owner
+   *
+   * Returns `false` for strangers (no trip loaded, no session, no
+   * matching accepted invite, no friend link).
+   *
+   * The accepted-friend-of-owner check is delegated to the server —
+   * when the trip detail GET succeeds the trips SELECT policy has
+   * already admitted the viewer, so a populated `state.current` is
+   * sufficient evidence the viewer is one of the three.
+   */
+  const canViewTrip = (
+    tId: string,
+    viewerUserId: string | null | undefined,
+  ): boolean => {
+    if (!viewerUserId) return false;
+    const trip = state.value.current;
+    if (!trip || trip.id !== tId) return false;
+    if (trip.user_id === viewerUserId) return true;
+    // Reaching the page with `state.current` populated means the
+    // trips SELECT policy already admitted this viewer. The only
+    // client-side remaining case is "owner of a populated trip" —
+    // accepted-invite / accepted-friend cases need the server's
+    // SELECT check, which has already passed.
+    const invitesForTrip = state.value.invitesByTripId[tId] ?? [];
+    return invitesForTrip.some(
+      (i) => i.invitee_user_id === viewerUserId && i.status === 'accepted',
+    );
+  };
+
+  /**
+   * P3.2 — fetch the accepted invites for this trip and merge with the
+   * trip owner into `state.participantsByTripId[tripId]`. Returns the
+   * resulting participant rows.
+   *
+   * Uses the existing P2 `GET /api/trips/:id/invites?status=accepted`
+   * endpoint — no new server code.
+   */
+  const listParticipants = async (tId: string): Promise<TripParticipantRow[]> => {
+    state.value.error = null;
+    try {
+      const acceptedRows = await $fetch<TripShareInviteRow[]>(
+        `/api/trips/${tId}/invites`,
+        { query: { status: 'accepted' } },
+      );
+      const accepted = acceptedRows ?? [];
+      const trip = state.value.current;
+      const ownerUserId = trip?.user_id ?? '';
+      const rows: TripParticipantRow[] = [];
+      if (ownerUserId) {
+        rows.push({
+          id: 'owner',
+          user_id: ownerUserId,
+          email: state.value.emailById[ownerUserId] ?? null,
+          role: 'owner',
+          status: 'accepted',
+        });
+      }
+      for (const inv of accepted) {
+        if (!inv.invitee_user_id) continue;
+        rows.push({
+          id: inv.id,
+          user_id: inv.invitee_user_id,
+          email:
+            state.value.emailById[inv.invitee_user_id] ?? inv.invitee_email,
+          role: 'invitee',
+          status: 'accepted',
+        });
+      }
+      state.value.participantsByTripId[tId] = rows;
+      await resolveParticipantsForTrip(tId);
+      return state.value.participantsByTripId[tId] ?? [];
+    } catch (e) {
+      setError(e);
+      throw e;
+    }
+  };
+
+  /**
+   * P3.2 — batched email lookup for participant user_ids that the cache
+   * doesn't already have. Mirrors `resolveEmailsForTrip` for comments.
+   */
+  const resolveParticipantsForTrip = async (tId: string) => {
+    const rows = state.value.participantsByTripId[tId] ?? [];
+    const missing = Array.from(
+      new Set(
+        rows
+          .map((r) => r.user_id)
+          .filter((id) => id && !state.value.emailById[id]),
+      ),
+    );
+    if (missing.length === 0) return;
+    try {
+      const resolved = await $fetch<EmailLookupResult[]>(
+        '/api/auth/lookup-emails',
+        { method: 'POST', body: { ids: missing } },
+      );
+      for (const r of resolved ?? []) {
+        state.value.emailById[r.user_id] = r.email;
+      }
+      // Re-stamp emails onto participant rows so the UI re-renders.
+      state.value.participantsByTripId[tId] = (state.value.participantsByTripId[tId] ?? []).map(
+        (row) =>
+          state.value.emailById[row.user_id]
+            ? { ...row, email: state.value.emailById[row.user_id] }
+            : row,
+      );
+    } catch (e) {
+      // Don't surface email-lookup failures — participants still render
+      // with the email-cached / fallback label.
+      // eslint-disable-next-line no-console
+      console.warn('participants lookup-emails failed', e);
+    }
+  };
+
   /**
    * Cross-trip badge feed: returns invites addressed to the current
    * user (status='pending') from any trip. Used by the AppHeader badge.
@@ -930,6 +1065,9 @@ export function useTrips() {
     removeTripComment,
     resolveEmailsForTrip,
     tripCommentAuthorEmail,
+    canViewTrip,
+    listParticipants,
+    resolveParticipantsForTrip,
     listIncomingInvites,
     getRecap,
     upsertRecap,

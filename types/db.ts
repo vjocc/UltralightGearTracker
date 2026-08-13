@@ -308,6 +308,22 @@ export interface TripShareInviteRow {
 }
 
 /**
+ * P3.2 — UI polish only. Derived client-side from `state.current.user_id`
+ * (owner) + `state.invitesByTripId[tripId]` filtered to `status = 'accepted'`.
+ * No new SQL, no new endpoint; the same data is also reachable via
+ * `/api/trips/:id/invites?status=accepted` (P2 endpoint, reused).
+ */
+export interface TripParticipantRow {
+  /** Local-only stable id; `'owner'` for the trip owner, invite `id` otherwise. */
+  id: 'owner' | UUID;
+  user_id: UUID;
+  email: string | null;
+  role: 'owner' | 'invitee';
+  /** Always `'accepted'` — pending invites are surfaced via the banner instead. */
+  status: 'accepted';
+}
+
+/**
  * Trip comments (see supabase/migrations/20260813110000_trip_share.sql).
  *
  * Flat comment thread per trip. Visibility gated by trip_visible_to (owner
