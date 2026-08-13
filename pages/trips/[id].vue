@@ -45,6 +45,15 @@ const {
   inviteByEmail,
   listInvites,
   removeInvite,
+  // P3 Recap + photos
+  getRecap,
+  upsertRecap,
+  updateRecap,
+  deleteRecap,
+  uploadPhoto,
+  reorderPhoto,
+  updatePhotoCaption,
+  deletePhoto,
   resetError,
 } = useTrips();
 const { state: gearState, list: listGear } = useGear();
@@ -329,6 +338,211 @@ const inviteStatusLabel = (s: string): string => {
   return s;
 };
 
+// --- Trip recap + photos (P3) ---------------------------------------------
+// Reactive binding for the owner edit form. The local refs are the source
+// of truth for the textarea / slider / toggle — the server round-trip
+// happens on save (upsertRecap or updateRecap). Photos have their own
+// draft map (`captionDrafts`) keyed by photo id so editing one caption
+// doesn't clobber another.
+const recapBody = ref('');
+const recapRating = ref<number | null>(null);
+const recapPublic = ref(false);
+const recapSaving = ref(false);
+
+const photoFileInput = ref<HTMLInputElement | null>(null);
+const photoUploading = ref(false);
+const photoLocalError = ref<string | null>(null);
+const captionDrafts = ref<Record<string, string>>({});
+const captionSaving = ref<Record<string, boolean>>({});
+
+const recap = computed(() => state.value.recapByTripId[tripId.value]?.recap ?? null);
+const photos = computed(
+  () => state.value.recapByTripId[tripId.value]?.photos ?? [],
+);
+
+// Hydrate the editor refs from the server response. We watch `recap` so
+// changes from PATCH / DELETE re-populate the form correctly.
+watch(
+  recap,
+  (r) => {
+    recapBody.value = r?.body ?? '';
+    recapRating.value = r?.rating_out_of_10 ?? null;
+    recapPublic.value = r?.public ?? false;
+  },
+  { immediate: true },
+);
+
+// Photos-first UX: opening the recap section auto-creates an empty recap
+// row the first time the user picks a file. The server endpoint does this
+// for us — we just need to await getRecap() afterwards so the cache reflects
+// the new row.
+const hasRecap = computed(() => !!recap.value);
+const isPublicRecap = computed(() => !!recap.value?.public);
+
+const saveRecap = async () => {
+  recapSaving.value = true;
+  try {
+    if (hasRecap.value) {
+      await updateRecap(tripId.value, {
+        body: recapBody.value,
+        rating_out_of_10: recapRating.value,
+        public: recapPublic.value,
+      });
+    } else {
+      await upsertRecap(tripId.value, {
+        body: recapBody.value,
+        rating_out_of_10: recapRating.value,
+        public: recapPublic.value,
+      });
+    }
+  } catch {
+    // surfaced via state.error
+  } finally {
+    recapSaving.value = false;
+  }
+};
+
+const handleDeleteRecap = async () => {
+  if (!confirm('Törlöd a beszámolót? A fotók is törlődnek.')) return;
+  try {
+    await deleteRecap(tripId.value);
+  } catch {
+    // surfaced via state.error
+  }
+};
+
+const triggerPhotoPicker = () => {
+  if (photoUploading.value) return;
+  photoLocalError.value = null;
+  photoFileInput.value?.click();
+};
+
+const onPhotoFileChange = async (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  target.value = '';
+  if (!file) return;
+  // Cheap pre-flight — surface empty / wrong-type locally so the user
+  // doesn't wait on the round-trip.
+  if (file.size === 0) {
+    photoLocalError.value = 'Üres vagy érvénytelen képfájl';
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    photoLocalError.value = 'A kép mérete meghaladja az 5 MB-os limitet';
+    return;
+  }
+  const okMime = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type);
+  if (!okMime) {
+    photoLocalError.value = 'Csak JPEG, PNG vagy WebP tölthető fel';
+    return;
+  }
+  photoUploading.value = true;
+  photoLocalError.value = null;
+  try {
+    await uploadPhoto(tripId.value, file);
+  } catch {
+    // surfaced via state.error
+  } finally {
+    photoUploading.value = false;
+  }
+};
+
+const saveCaption = async (photoId: string) => {
+  const draft = captionDrafts.value[photoId];
+  if (draft === undefined) return;
+  captionSaving.value = { ...captionSaving.value, [photoId]: true };
+  try {
+    await updatePhotoCaption(tripId.value, photoId, draft);
+    // Clear draft so the next render reads from the canonical row.
+    const next = { ...captionDrafts.value };
+    delete next[photoId];
+    captionDrafts.value = next;
+  } catch {
+    // surfaced via state.error
+  } finally {
+    captionSaving.value = { ...captionSaving.value, [photoId]: false };
+  }
+};
+
+const handleDeletePhoto = async (photoId: string) => {
+  if (!confirm('Törlöd ezt a fotót?')) return;
+  try {
+    await deletePhoto(photoId);
+  } catch {
+    // surfaced via state.error
+  }
+};
+
+// Drag-and-drop reorder. We use HTML5 drag events (no vuedraggable /
+// sortable dependency added — keeps the install footprint small per
+// Architect §E.2). On drop, we reassign display_order for every photo
+// in the new order, then PATCH only the photos whose index actually
+// changed (the originalIndex !== newIndex filter — the Architect §E.2
+// warning about losing intermediate reorders).
+const dragPhotoId = ref<string | null>(null);
+
+const onDragStart = (photoId: string) => {
+  dragPhotoId.value = photoId;
+};
+
+const onDragEnd = () => {
+  // Clear the drag-active visual state even if the drop missed a
+  // valid target (otherwise the ring-2 stays stuck on the card).
+  dragPhotoId.value = null;
+};
+
+const onDragOver = (event: DragEvent) => {
+  // Prevent default so the drop event fires.
+  event.preventDefault();
+};
+
+const onDrop = async (targetIndex: number) => {
+  const srcId = dragPhotoId.value;
+  dragPhotoId.value = null;
+  if (!srcId) return;
+  const list = photos.value;
+  const srcIndex = list.findIndex((p) => p.id === srcId);
+  if (srcIndex < 0 || srcIndex === targetIndex) return;
+  // Reorder locally (optimistic) — mirror the move.
+  const reordered = [...list];
+  const [moved] = reordered.splice(srcIndex, 1);
+  reordered.splice(targetIndex, 0, moved);
+  // Compute the new display_order assignments. We use 0..N-1 so the
+  // relative order is canonical, regardless of gaps.
+  const updates: Array<{ id: string; newOrder: number }> = [];
+  reordered.forEach((p, idx) => {
+    const original = list[idx];
+    if (!original || original.id !== p.id) {
+      updates.push({ id: p.id, newOrder: idx });
+    }
+  });
+  // Mirror into the cache immediately so the UI updates without a
+  // round-trip wait.
+  const cur = state.value.recapByTripId[tripId.value];
+  if (cur) {
+    state.value.recapByTripId = {
+      ...state.value.recapByTripId,
+      [tripId.value]: {
+        ...cur,
+        photos: reordered.map((p, idx) => ({ ...p, display_order: idx })),
+      },
+    };
+  }
+  // Fire PATCHes for the moved entries only.
+  await Promise.all(
+    updates.map((u) => reorderPhoto(tripId.value, u.id, u.newOrder)),
+  ).catch(() => undefined);
+};
+
+const isOwnerViewer = computed(
+  () => !!user.value && state.value.current?.user_id === user.value.id,
+);
+
+// Acceptable caption length is 500 — surface the live counter only when
+// near the cap so the form doesn't add visual noise for short captions.
+const captionLength = (s: string | null | undefined): number => s?.length ?? 0;
+
 onMounted(async () => {
   await Promise.all([
     list(),
@@ -344,6 +558,10 @@ onMounted(async () => {
     fetchTripWeight(),
     // P2 Social — load the trip's invites (owner sees pending).
     listInvites(tripId.value, 'pending').catch(() => undefined),
+    // P3 Recap — load recap + photos so the preview shows immediately.
+    // The endpoint returns `{recap: null, photos: []}` if no row exists
+    // yet, which we tolerate silently.
+    getRecap(tripId.value).catch(() => undefined),
   ]);
 });
 </script>
@@ -594,6 +812,288 @@ onMounted(async () => {
       >
         {{ state.current.description }}
       </p>
+
+      <!--
+        P3 Túra-élménybeszámoló + fotók (Architect §E).
+        Owner: szerkeszthető űrlap (body + rating slider + public toggle)
+        + fotó grid (upload + drag-and-drop reorder + caption + törlés).
+        Non-owner: read-only preview, amennyiben a recap public = true
+        VAGY a trip_visible_to (P2) alapján látható.
+      -->
+      <section
+        v-if="isOwnerViewer"
+        class="rounded-lg border border-clay-200 bg-sand-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
+        aria-label="Túra-élménybeszámoló"
+      >
+        <header class="flex items-baseline justify-between gap-2">
+          <h3 class="text-sm font-semibold tracking-tight text-bark-900">
+            Túra-élménybeszámoló
+          </h3>
+          <span
+            v-if="recap?.public"
+            class="rounded border border-moss-300 bg-moss-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-moss-900"
+          >
+            Publikus
+          </span>
+        </header>
+        <p class="mt-1 text-xs italic text-loam-500">
+          Komfort is számít, nem csak a könnyű súly.
+        </p>
+
+        <label class="mt-3 block">
+          <span class="sr-only">Beszámoló szövege</span>
+          <textarea
+            v-model="recapBody"
+            rows="6"
+            class="input w-full"
+            maxlength="20000"
+            placeholder="Hogy sikerült a túra? Mi volt a csúcspont, mi a tanulság?"
+          />
+        </label>
+
+        <div class="mt-3 flex flex-wrap items-center gap-4">
+          <label class="flex flex-1 min-w-[180px] items-center gap-3 text-xs text-bark-700">
+            <span class="whitespace-nowrap font-medium">Élmény (0-10):</span>
+            <input
+              v-model.number="recapRating"
+              type="range"
+              min="0"
+              max="10"
+              step="1"
+              class="flex-1 accent-moss-600"
+              aria-label="Túra élmény értékelés 0-10"
+            />
+            <span class="w-12 text-right tabular-nums font-semibold text-bark-900">
+              {{ recapRating ?? '–' }} / 10
+            </span>
+          </label>
+          <label class="flex items-center gap-2 text-xs text-bark-700">
+            <input
+              v-model="recapPublic"
+              type="checkbox"
+              class="h-4 w-4 rounded border-clay-300 text-moss-700 focus:ring-moss-600"
+            />
+            <span>Publikus (barátok is olvashatják)</span>
+          </label>
+        </div>
+
+        <div class="mt-4 flex items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center rounded-md bg-moss-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-moss-800 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-moss-300"
+            :disabled="recapSaving"
+            @click="saveRecap"
+          >
+            <span
+              v-if="recapSaving"
+              class="mr-2 inline-block h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin"
+              aria-hidden="true"
+            />
+            {{ hasRecap ? 'Mentés' : 'Létrehozás' }}
+          </button>
+          <button
+            v-if="hasRecap"
+            type="button"
+            class="btn-danger px-3 py-1.5 text-sm"
+            @click="handleDeleteRecap"
+          >
+            Törlés
+          </button>
+        </div>
+
+        <!-- Fotók grid -->
+        <div class="mt-5">
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              class="inline-flex items-center rounded-md bg-moss-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-moss-800 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-moss-300"
+              :disabled="photoUploading"
+              @click="triggerPhotoPicker"
+            >
+              <span
+                v-if="photoUploading"
+                class="mr-2 inline-block h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin"
+                aria-hidden="true"
+              />
+              {{ photoUploading ? 'Feltöltés…' : 'Fotó hozzáadása' }}
+            </button>
+            <input
+              ref="photoFileInput"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              class="hidden"
+              aria-label="Túra fotó kiválasztása"
+              @change="onPhotoFileChange"
+            />
+            <span class="text-xs text-loam-500">
+              Max 5 MB, JPEG / PNG / WebP
+            </span>
+          </div>
+
+          <p
+            v-if="photoLocalError"
+            role="alert"
+            class="mt-2 flex items-start gap-2 rounded border border-clay-300 bg-bark-50 px-3 py-2 text-xs text-bark-700"
+          >
+            <span aria-hidden="true" class="mt-px text-clay-500">▲</span>
+            <span>{{ photoLocalError }}</span>
+          </p>
+
+          <p
+            v-if="photos.length === 0"
+            class="mt-3 text-xs italic text-loam-500"
+          >
+            Még nincs fotó. A beszámoló elkészülhet fotók nélkül is —
+            töltsd fel a legszebb pillanatokat, hogy emlékezetes maradjon.
+          </p>
+
+          <ul
+            v-else
+            class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3"
+          >
+            <li
+              v-for="(photo, idx) in photos"
+              :key="photo.id"
+              class="overflow-hidden rounded border border-clay-200 bg-white transition-all duration-200 hover:ring-1 hover:ring-moss-500 hover:scale-[1.01] hover:cursor-grab"
+              :class="dragPhotoId === photo.id ? 'ring-2 ring-moss-700 scale-[1.02] cursor-grabbing' : ''"
+              :draggable="true"
+              @dragstart="onDragStart(photo.id)"
+              @dragover="onDragOver($event)"
+              @drop="onDrop(idx)"
+              @dragend="onDragEnd"
+            >
+              <!--
+                Ha nincs public_url (pl. a server nem dekorálta), esünk
+                vissza egy monogram placeholder-re (két betű a photo id
+                utolsó két hex karakteréből).
+              -->
+              <div class="relative h-48 w-full bg-clay-100">
+                <img
+                  v-if="photo.public_url"
+                  :src="photo.public_url"
+                  :alt="photo.caption ?? 'Túra fotó'"
+                  class="h-full w-full object-cover"
+                />
+                <div
+                  v-else
+                  class="flex h-full w-full items-center justify-center text-2xl font-bold text-clay-700"
+                >
+                  {{ (photo.id || '').slice(-2).toUpperCase() || 'M' }}
+                </div>
+                <span
+                  class="absolute left-2 top-2 rounded bg-bark-900/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sand-50"
+                  aria-hidden="true"
+                >
+                  #{{ idx + 1 }}
+                </span>
+              </div>
+              <div class="space-y-1 p-2">
+                <input
+                  :value="captionDrafts[photo.id] ?? photo.caption ?? ''"
+                  type="text"
+                  class="input w-full text-xs"
+                  maxlength="500"
+                  placeholder="Monogram képaláírás…"
+                  @input="captionDrafts = { ...captionDrafts, [photo.id]: ($event.target as HTMLInputElement).value }"
+                />
+                <div class="flex items-center justify-between text-[10px] text-loam-500">
+                  <span v-if="captionLength(captionDrafts[photo.id] ?? photo.caption) > 400">
+                    {{ captionLength(captionDrafts[photo.id] ?? photo.caption) }} / 500
+                  </span>
+                  <span v-else>&nbsp;</span>
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <button
+                    v-if="captionDrafts[photo.id] !== undefined && captionDrafts[photo.id] !== (photo.caption ?? '')"
+                    type="button"
+                    class="text-xs font-medium text-moss-700 underline disabled:opacity-60"
+                    :disabled="captionSaving[photo.id]"
+                    @click="saveCaption(photo.id)"
+                  >
+                    {{ captionSaving[photo.id] ? 'Mentés…' : 'Mentés' }}
+                  </button>
+                  <span v-else aria-hidden="true">&nbsp;</span>
+                  <button
+                    type="button"
+                    class="text-xs font-medium text-clay-700 underline"
+                    @click="handleDeletePhoto(photo.id)"
+                  >
+                    Törlés
+                  </button>
+                </div>
+              </div>
+            </li>
+          </ul>
+          <p class="mt-2 text-[11px] text-loam-500">
+            Húzd el a kártyákat az átrendezéshez.
+          </p>
+        </div>
+      </section>
+
+      <!--
+        Non-owner read-only preview. Csak akkor jelenik meg, ha van recap
+        ÉS (recap.public = true VAGY trip_visible_to alapján látható —
+        ez utóbbit a server-side RLS garantálja, a GET hívás 200-zal
+        jön vissza csak ilyenkor).
+      -->
+      <section
+        v-else-if="recap"
+        class="rounded-lg border border-clay-200 bg-sand-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
+        aria-label="Túra beszámoló"
+      >
+        <header class="flex items-baseline justify-between gap-2">
+          <h3 class="text-sm font-semibold tracking-tight text-bark-900">
+            Beszámoló
+          </h3>
+          <span
+            v-if="recap.rating_out_of_10 !== null && recap.rating_out_of_10 !== undefined"
+            class="rounded border border-clay-300 bg-clay-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-clay-900 tabular-nums"
+          >
+            Élmény: {{ recap.rating_out_of_10 }} / 10
+          </span>
+        </header>
+        <p class="mt-2 whitespace-pre-wrap text-sm text-bark-900">
+          {{ recap.body ?? '…' }}
+        </p>
+
+        <ul
+          v-if="photos.length > 0"
+          class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3"
+        >
+          <li
+            v-for="photo in photos"
+            :key="photo.id"
+            class="overflow-hidden rounded border border-clay-200 bg-white"
+          >
+            <div class="h-48 w-full bg-clay-100">
+              <img
+                v-if="photo.public_url"
+                :src="photo.public_url"
+                :alt="photo.caption ?? 'Túra fotó'"
+                class="h-full w-full object-cover"
+              />
+              <div
+                v-else
+                class="flex h-full w-full items-center justify-center text-2xl font-bold text-clay-700"
+              >
+                {{ (photo.id || '').slice(-2).toUpperCase() || 'M' }}
+              </div>
+            </div>
+            <p
+              v-if="photo.caption"
+              class="px-2 py-1 text-xs text-bark-700"
+            >
+              {{ photo.caption }}
+            </p>
+            <p
+              v-else
+              class="px-2 py-1 text-xs italic text-loam-500"
+            >
+              Monogram fotó
+            </p>
+          </li>
+        </ul>
+      </section>
 
       <div>
         <h3 class="mb-2 text-sm font-semibold text-gray-900">
