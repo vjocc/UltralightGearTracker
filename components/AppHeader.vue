@@ -105,7 +105,7 @@ const handleSignOut = async () => {
           <!-- Bejövő meghívók badge: pending invites where the caller
                is the invitee. Click → first pending invite's trip. -->
           <button
-            v-if="incomingCount > 0 || badgeLoading"
+            v-if="incomingCount > 0"
             type="button"
             :aria-label="`Bejövő meghívók: ${incomingCount}`"
             class="relative inline-flex items-center rounded-md border border-clay-300 bg-sand-50 px-2.5 py-1 text-xs font-medium text-bark-900 hover:border-moss-500 hover:bg-moss-50 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2"
