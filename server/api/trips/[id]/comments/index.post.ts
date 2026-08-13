@@ -52,9 +52,27 @@ export default defineEventHandler(async (event) => {
     });
   }
 
+  // The trip_comments.user_id column is NOT NULL with no DB-side default
+  // auth.uid() (intentionally — we own the value at the API layer so the
+  // caller's identity is explicit). Pass getUserId(user) so the RLS
+  // INSERT WITH CHECK (`auth.uid() = user_id`) matches and the row
+  // inserts cleanly. serverSupabaseUser() returns the JWT claims payload,
+  // whose primary identifier is `sub` (not `id`), so `user.id` would be
+  // `undefined` and the insert would 400 with "null value in column
+  // user_id violates not-null constraint" or the RLS WITH CHECK above
+  // would reject it.
+  const callerId = getUserId(user);
+  if (!callerId) {
+    throw createError({ statusCode: 401, statusMessage: 'Not signed in' });
+  }
+
   const { data, error } = await supabase
     .from('trip_comments')
-    .insert({ trip_id: tripId, body: parsed.data.body })
+    .insert({
+      trip_id: tripId,
+      user_id: callerId,
+      body: parsed.data.body,
+    })
     .select('id, trip_id, user_id, body, created_at, updated_at')
     .single();
 
