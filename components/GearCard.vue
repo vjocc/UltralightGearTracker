@@ -71,7 +71,7 @@ const priceLabel = computed(() => {
       </button>
       <button
         type="button"
-        class="rounded border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+        class="btn-danger px-2 py-1 text-xs"
         @click="emit('delete', item)"
       >
         Delete
