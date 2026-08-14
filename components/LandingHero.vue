@@ -162,16 +162,10 @@ onBeforeUnmount(() => {
         <div
           class="mt-8 flex flex-col items-stretch justify-end gap-3 sm:mt-10 sm:flex-row sm:items-center md:justify-end"
         >
-          <NuxtLink
-            :to="primaryHref"
-            class="inline-flex items-center justify-center rounded-pill bg-brand px-7 py-3 font-display text-base font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-espresso"
-          >
+          <NuxtLink :to="primaryHref" class="btn-primary">
             Összerakom a túracsomagomat
           </NuxtLink>
-          <NuxtLink
-            :to="secondaryHref"
-            class="inline-flex items-center justify-center rounded-pill border-2 border-espresso bg-transparent px-7 py-3 font-display text-base font-extrabold text-espresso transition-colors hover:bg-espresso hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-espresso focus-visible:ring-offset-2 focus-visible:ring-offset-espresso"
-          >
+          <NuxtLink :to="secondaryHref" class="btn-secondary">
             Már van fiókom, belépek
           </NuxtLink>
         </div>

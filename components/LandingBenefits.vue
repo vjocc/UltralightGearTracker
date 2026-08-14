@@ -1,9 +1,16 @@
 <script setup lang="ts">
 /**
- * Landing benefits section.
+ * Landing benefits section — P4.2 redesign.
  *
- * 3-col grid (mobile: stack → grid-cols-1 sm:grid-cols-3).
- * Benefit card-ok clay-100 háttérrel.
+ * 3-col grid (mobile: stack, sm: 3-col). MemoFox §7.2 light feature card.
+ * Section background: blushLight (MemoFox §2.2 — cream section bg).
+ * Container: max-w-7xl, py-24 md:py-32.
+ * Typography: H2 display ExtraBold (blush section header), H3 Bold cards.
+ *
+ * A 3 előny:
+ *   1. Komfort és súly egyensúlyban
+ *   2. Tervezés GPX-szel, a barátokkal
+ *   3. Túra-élménybeszámoló
  */
 interface BenefitItem {
   emoji: string;
@@ -31,19 +38,30 @@ const benefits: BenefitItem[] = [
 </script>
 
 <template>
-  <section class="bg-sand-50">
-    <div class="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+  <section class="bg-blushLight-50" aria-label="Előnyök">
+    <div class="mx-auto max-w-7xl px-4 py-24 sm:px-6 md:py-32 lg:px-8">
+      <!-- Section header -->
+      <div class="mx-auto max-w-2xl text-center">
+        <h2 class="font-display text-3xl font-extrabold text-espresso-900 sm:text-4xl lg:text-[40px]">
+          Három dolog, amitől a túrád könnyebb lesz
+        </h2>
+        <p class="mt-4 text-base font-normal leading-relaxed text-espresso-900/70 sm:text-lg">
+          Nem a legkevesebb gramm számít — hanem hogy jól érezd magad a hegyen.
+        </p>
+      </div>
+
+      <!-- 3-col grid of light feature cards -->
+      <div class="mt-12 grid grid-cols-1 gap-6 sm:mt-16 sm:grid-cols-3 sm:gap-8">
         <article
           v-for="b in benefits"
           :key="b.title"
-          class="rounded-lg bg-clay-100 p-6 shadow-sm"
+          class="card-light"
         >
-          <div class="text-2xl" aria-hidden="true">{{ b.emoji }}</div>
-          <h3 class="mt-3 text-lg font-semibold text-bark-900">
+          <div class="text-3xl" aria-hidden="true">{{ b.emoji }}</div>
+          <h3 class="mt-4 font-display text-xl font-extrabold text-espresso-900 sm:text-2xl">
             {{ b.title }}
           </h3>
-          <p class="mt-2 text-sm leading-relaxed text-bark-700">
+          <p class="mt-3 text-sm font-normal leading-relaxed text-espresso-900/80 sm:text-base">
             {{ b.body }}
           </p>
         </article>

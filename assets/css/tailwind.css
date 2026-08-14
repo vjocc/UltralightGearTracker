@@ -1,26 +1,94 @@
-/* P4.0 — palette swap done; @layer components unchanged (P4.4 scope). */
+/* P4.4 — Buttons + Forms utility class-ok (MemoFox design system §6.1-6.2, §5.5-5.6, §7-9). */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer components {
+  /* ---------------------------------------------------------------------
+   * A.1 .btn-primary — Filled, pill (MemoFox §6.1)
+   * Brand Purple #7936EB + white text + 9999px pill border-radius.
+   * Padding 16-18px vertikális / 32-36px vízszintes.
+   * Használat: Hero primary, "Megrendelem", "Összerakom a túracsomagomat".
+   * Hover: bg-brand-700 (sötétebb brand purple).
+   * ------------------------------------------------------------------- */
   .btn-primary {
-    @apply inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-indigo-300;
+    @apply inline-flex items-center justify-center rounded-pill bg-brand-500 px-7 py-3 font-display text-base font-extrabold text-white transition-colors duration-200 hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
   }
 
+  /* ---------------------------------------------------------------------
+   * A.2 .btn-secondary — Outline, pill (MemoFox §6.2)
+   * 2px espresso border + espresso text + transparent bg + pill.
+   * Használat: Hero secondary, "Már van fiókom, belépek".
+   * Hover: invertál (espresso bg, white text).
+   * ------------------------------------------------------------------- */
   .btn-secondary {
-    @apply rounded border border-gray-300 bg-white font-medium text-gray-700 hover:bg-gray-100;
+    @apply inline-flex items-center justify-center rounded-pill border-2 border-espresso-900 bg-transparent px-7 py-3 font-display text-base font-extrabold text-espresso-900 transition-colors duration-200 hover:bg-espresso-900 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-espresso-900 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
   }
 
+  /* ---------------------------------------------------------------------
+   * A.3 .btn-danger — Outline red, pill
+   * Piros 2px border + red-700 text + white bg + pill.
+   * Használat: Delete/törlés gombok (Card-delete, Logout).
+   * Hover: red-50 background.
+   * ------------------------------------------------------------------- */
   .btn-danger {
-    @apply rounded border border-red-200 bg-white font-medium text-red-700 hover:bg-red-50;
+    @apply inline-flex items-center justify-center rounded-pill border-2 border-red-500 bg-white px-5 py-2 font-bold text-red-700 transition-colors duration-200 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
   }
 
-  .spinner {
-    @apply border-2 border-white/40 border-t-white animate-spin rounded-full;
-  }
-
+  /* ---------------------------------------------------------------------
+   * A.4 .input — Form input, pill (MemoFox §6.3 input style)
+   * blushLight-50 bg + 1px espresso-900/20 border + pill form.
+   * Focus: brand-500 border + brand-500 ring.
+   * Használat: minden input (signin/signup, gear name, weight, trip name).
+   * ------------------------------------------------------------------- */
   .input {
-    @apply mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500;
+    @apply block w-full rounded-pill border border-espresso-900/20 bg-blushLight-50 px-4 py-2 text-espresso-900 placeholder:text-espresso-900/40 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  /* ---------------------------------------------------------------------
+   * A.5 .spinner — Loading indicator (MemoFox §8 ember orange)
+   * 2px border (ember-500/40) + border-t-ember-500 + rounded-full + animate-spin.
+   * Használat: loading state-ben (button belsejében, page loading).
+   * 60fps animáció.
+   * ------------------------------------------------------------------- */
+  .spinner {
+    @apply inline-block h-4 w-4 animate-spin rounded-full border-2 border-ember-500/40 border-t-ember-500;
+  }
+
+  /* ---------------------------------------------------------------------
+   * A.6 .card-dark — Dark process card (MemoFox §7.1)
+   * Espresso-900 bg + white text + rounded-card (24px) + p-6.
+   * Használat: dark process card (4-step process).
+   * ------------------------------------------------------------------- */
+  .card-dark {
+    @apply rounded-card bg-espresso-900 p-6 text-white;
+  }
+
+  /* ---------------------------------------------------------------------
+   * A.7 .card-light — Light feature card (MemoFox §7.2)
+   * blushLight-50 bg + espresso-900 text + rounded-card (24px) + p-6 + shadow-sm.
+   * Használat: light feature card (3 előny: Komfort/súly, GPX, Beszámoló).
+   * ------------------------------------------------------------------- */
+  .card-light {
+    @apply rounded-card bg-blushLight-50 p-6 text-espresso-900 shadow-sm;
+  }
+
+  /* ---------------------------------------------------------------------
+   * A.8 .icon-accent — MemóriaFox ember orange icon wrapper (MemoFox §8)
+   * Ember-500 text + flex-shrink-0 + 24×24.
+   * Használat: minden SVG icon (kosár, ceruza, felhő). 2px stroke,
+   * `currentColor` szín a wrapper-től öröklődik.
+   * ------------------------------------------------------------------- */
+  .icon-accent {
+    @apply h-6 w-6 flex-shrink-0 text-ember-500;
+  }
+
+  /* ---------------------------------------------------------------------
+   * A.9 .divider-moss — Moss olive divider sáv (MemoFox §9)
+   * bg-moss-500 + h-2 + full-width.
+   * Használat: section-ök közötti elválasztó sáv.
+   * ------------------------------------------------------------------- */
+  .divider-moss {
+    @apply h-2 w-full bg-moss-500;
   }
 }
