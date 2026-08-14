@@ -14,7 +14,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="rounded-lg border border-dashed border-gray-300 bg-white p-10 text-center">
+  <div class="rounded-card border border-dashed border-gray-300 bg-white p-10 text-center">
     <h3 class="text-lg font-semibold text-gray-900">No gear yet</h3>
     <p class="mt-1 text-sm text-gray-500">
       Start by adding the first piece of gear in your kit.

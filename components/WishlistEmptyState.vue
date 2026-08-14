@@ -13,7 +13,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="rounded-lg border border-dashed border-gray-300 bg-white p-10 text-center">
+  <div class="rounded-card border border-dashed border-gray-300 bg-white p-10 text-center">
     <h3 class="text-lg font-semibold text-gray-900">No wishlist items yet</h3>
     <p class="mt-1 text-sm text-gray-500">
       Track gear you're eyeing: add a name, link, and an optional target price to get notified when it drops.

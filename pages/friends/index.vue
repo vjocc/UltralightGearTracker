@@ -209,7 +209,7 @@ onMounted(async () => {
         class="mt-2"
       >
         <!-- Empty state — visible only when both lists are empty. -->
-        <div class="rounded-lg border border-dashed border-gray-300 bg-white p-10 text-center">
+        <div class="rounded-card border border-dashed border-gray-300 bg-white p-10 text-center">
           <h4 class="text-lg font-semibold text-gray-900">Még nincs barátod</h4>
           <p class="mt-1 text-sm text-gray-500">
             Keresés email alapján — pontos egyezés kell, a felhasználónak már regisztrálnia kell.

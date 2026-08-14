@@ -272,7 +272,7 @@ onBeforeUnmount(() => {
     >
       <div
         ref="dialogRef"
-        class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+        class="w-full max-w-md rounded-card bg-white p-6 shadow-xl"
       >
         <h2 class="text-lg font-semibold text-gray-900">
           {{ isEdit ? 'Edit gear' : 'Add gear' }}

@@ -59,7 +59,7 @@ const sortLabel = computed(() =>
 
 <template>
   <section
-    class="sticky top-16 z-10 mb-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+    class="sticky top-16 z-10 mb-4 rounded-card border border-gray-200 bg-white p-4 shadow-sm"
     aria-labelledby="trip-weight-heading"
   >
     <div class="flex items-baseline justify-between gap-3">
