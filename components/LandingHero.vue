@@ -105,10 +105,10 @@ onBeforeUnmount(() => {
       Front kép: fix, NEM parallax. A jobb oldali világos égre vetítve,
       alulra igazítva (object-bottom). object-contain megtartja az eredeti
       képkivágást — a cutout túrázók a kép alsó középső részén helyezkednek el.
-      Desktop: ~60% szélesség (jobbra), tablet: ~50%, mobile: ~80% (középen).
+      Desktop: ~100% szélesség (kozepre), tablet: ~100%, mobile: ~100% (középen).
     -->
     <div
-      class="pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-1/2 items-end justify-end md:flex lg:w-3/5"
+      class="pointer-events-none absolute bottom-0 w-full z-10 hidden md:flex"
     >
       <img
         src="/hero/front.png"
@@ -143,13 +143,13 @@ onBeforeUnmount(() => {
       Mobilon a tartalom középre kerül és a front kép mögé simul.
     -->
     <div
-      class="relative z-20 mx-auto flex h-full max-w-7xl items-center justify-end px-4 sm:px-6 lg:px-8"
+      class="relative z-20 mx-auto flex h-full max-w-7xl items-top justify-left px-4 sm:px-6 lg:px-8"
     >
       <div
-        class="w-full max-w-md text-center md:max-w-lg md:text-right md:[&>*]:text-right"
+        class="w-full max-w-md text-center md:max-w-lg md:text-left md:[&>*]:text-left"
       >
         <h1
-          class="font-display text-4xl font-extrabold leading-tight text-espresso sm:text-5xl lg:text-[56px]"
+          class="font-display text-2xl font-bold sm:text-3xl lg:text-4xl"
         >
           Csomagolj tudatosan — nem könnyebben, hanem okosabban.
         </h1>
@@ -161,10 +161,10 @@ onBeforeUnmount(() => {
 
         <!-- CTA pair: MemoFox §6.3 — filled + outline, pirula, display ExtraBold -->
         <div
-          class="mt-8 flex flex-col items-stretch justify-end gap-3 sm:mt-10 sm:flex-row sm:items-center md:justify-end"
+          class="mt-8 flex flex-col items-stretch gap-3 sm:mt-10 sm:flex-row sm:items-center"
         >
           <NuxtLink :to="primaryHref" class="btn-primary">
-            Összerakom a túracsomagomat
+            Csomagolok
           </NuxtLink>
           <NuxtLink :to="secondaryHref" class="btn-secondary">
             Már van fiókom, belépek

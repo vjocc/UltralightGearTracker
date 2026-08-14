@@ -186,11 +186,12 @@ export default <Partial<Config>>{
       },
       fontFamily: {
         // MemoFox §3.1 — display: rounded ExtraBold sans-serif
-        display: ['"Baloo 2"', 'ui-rounded', 'system-ui', 'sans-serif'],
+        display: ['"Unbounded"', 'ui-rounded', 'system-ui', 'sans-serif'],
         // MemoFox §3.2 — body: humanist sans-serif
-        body: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        body: ['Plus Jakarta Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         // Backwards-compat fallback (P3.x components used `font-sans`).
         sans: [
+          'Plus Jakarta Sans',
           'Inter',
           'ui-sans-serif',
           'system-ui',
