@@ -1,0 +1,16 @@
+@import './tokens/fonts.css';
+@import './tokens/colors.css';
+@import './tokens/typography.css';
+@import './tokens/spacing.css';
+@import './tokens/shadows.css';
+@import './assets/brand/fig-tokens.css';
+
+body {
+  margin: 0;
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+}
+a { color: var(--accent-purple); text-decoration: none; }
+a:hover { color: var(--brand-900); text-decoration: underline; }
+* { box-sizing: border-box; }

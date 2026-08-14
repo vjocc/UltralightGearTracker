@@ -1,0 +1,26 @@
+<!-- @dsCard group="Components" viewport="700x360" name="Navigation" -->
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/bold/style.css">
+<style>
+  body{padding:24px;background:var(--color-bg-page);font-family:var(--font-body);display:flex;flex-direction:column;gap:28px}
+  .crumb{display:flex;align-items:center;gap:8px;font-size:14px}
+  .crumb i{font-size:12px;color:var(--color-text-secondary)}
+  .page{display:flex;gap:6px}
+  .page button{width:36px;height:36px;border-radius:var(--radius-full);border:none;font-weight:700;font-size:14px;cursor:pointer;background:transparent;color:var(--brand-900)}
+  .page button.on{background:var(--accent-purple);color:#fff}
+  .acc{display:flex;flex-direction:column;gap:8px;width:500px}
+  .acc-item{background:#fff;border-radius:var(--radius-md);overflow:hidden}
+  .acc-item button{width:100%;display:flex;justify-content:space-between;padding:16px 20px;border:none;background:none;cursor:pointer;text-align:left;font-family:var(--font-display);font-weight:700;font-size:14px;color:var(--brand-900)}
+  .acc-body{padding:0 20px 16px;font-size:14px;color:var(--color-text-secondary);display:none}
+  .acc-item.open .acc-body{display:block}
+  .acc-item.open i{transform:rotate(180deg)}
+</style></head>
+<body>
+  <nav class="crumb"><span style="color:var(--color-text-secondary)">Főoldal</span><i class="ph-bold ph-caret-right"></i><span style="color:var(--color-text-secondary)">Videóim</span><i class="ph-bold ph-caret-right"></i><span style="font-weight:700;color:var(--brand-900)">Esküvő 2024</span></nav>
+  <div class="page"><button><i class="ph-bold ph-caret-left"></i></button><button>1</button><button class="on">2</button><button>3</button><button>4</button><button>5</button><button>6</button><button><i class="ph-bold ph-caret-right"></i></button></div>
+  <div class="acc">
+    <div class="acc-item open" onclick="this.classList.toggle('open')"><button>Mennyi idő alatt készül el a videó?<i class="ph-bold ph-caret-down"></i></button><div class="acc-body">A feltöltéstől számítva 7 munkanapon belül elkészítjük és elküldjük.</div></div>
+    <div class="acc-item" onclick="this.classList.toggle('open')"><button>Milyen formátumban töltsem fel a felvételeket?<i class="ph-bold ph-caret-down"></i></button><div class="acc-body">Bármilyen telefonos vagy kamerás formátumot elfogadunk.</div></div>
+  </div>
+</body></html>

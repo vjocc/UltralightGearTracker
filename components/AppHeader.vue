@@ -105,19 +105,21 @@ const handleSignOut = async () => {
           <!-- Bejövő meghívók badge: pending invites where the caller
                is the invitee. Click → first pending invite's trip. -->
           <button
-            v-if="incomingCount > 0"
+            v-if="incomingCount > 0 || badgeLoading"
             type="button"
-            :aria-label="`Bejövő meghívók: ${incomingCount}`"
-            class="relative inline-flex items-center rounded-md border border-clay-300 bg-sand-50 px-2.5 py-1 text-xs font-medium text-bark-900 hover:border-moss-500 hover:bg-moss-50 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2"
+            :aria-label="badgeLoading ? 'Bejövő meghívók betöltése' : `Bejövő meghívók: ${incomingCount}`"
+            :disabled="badgeLoading"
+            class="relative inline-flex items-center rounded-md border border-clay-300 bg-sand-50 px-2.5 py-1 text-xs font-medium text-bark-900 hover:border-moss-500 hover:bg-moss-50 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-wait disabled:hover:border-clay-300 disabled:hover:bg-sand-50"
             @click="handleBadgeClick"
           >
             <span aria-hidden="true">📬</span>
             <span class="ml-1">Meghívók</span>
             <span
-              class="ml-1.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-sand-200 px-1 text-[10px] font-semibold text-bark-900 tabular-nums"
-              :aria-hidden="incomingCount === 0 || undefined"
+              class="ml-1.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums"
+              :class="badgeLoading ? 'bg-clay-100 text-bark-300' : 'bg-sand-200 text-bark-900'"
+              aria-hidden="true"
             >
-              {{ incomingCount }}
+              {{ badgeLoading ? '•••' : incomingCount }}
             </span>
           </button>
 
@@ -127,7 +129,7 @@ const handleSignOut = async () => {
           <button
             type="button"
             aria-label="Kijelentkezés"
-            class="rounded border border-gray-300 bg-white px-3 py-1.5 font-medium text-gray-700 hover:border-red-300 hover:bg-red-50 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+            class="btn-danger px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 hover:border-red-300"
             @click="handleSignOut"
           >
             Kijelentkezés
@@ -136,13 +138,13 @@ const handleSignOut = async () => {
         <template v-else>
           <NuxtLink
             to="/signin"
-            class="rounded border border-gray-300 bg-white px-3 py-1.5 font-medium text-gray-700 hover:bg-gray-50"
+            class="btn-secondary px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 hover:bg-gray-50"
           >
             Belépés
           </NuxtLink>
           <NuxtLink
             to="/signup"
-            class="rounded bg-indigo-600 px-3 py-1.5 font-medium text-white hover:bg-indigo-700"
+            class="btn-primary px-3 py-1.5"
           >
             Regisztráció
           </NuxtLink>

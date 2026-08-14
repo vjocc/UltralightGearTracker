@@ -1,0 +1,32 @@
+<!-- @dsCard group="Components" viewport="700x420" name="Feedback" -->
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/duotone/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/bold/style.css">
+<style>
+  body{padding:24px;background:var(--color-bg-page);font-family:var(--font-body);display:flex;flex-direction:column;gap:24px}
+  .alert{display:flex;gap:12px;padding:16px 20px;border-radius:var(--radius-md);max-width:420px}
+  .alert i{font-size:22px;flex-shrink:0}
+  .alert .txt{display:flex;flex-direction:column;gap:2px}
+  .alert strong{font-size:14px}
+  .alert span.sub{font-size:14px;opacity:.9}
+  .tooltip{position:relative;display:inline-flex}
+  .tooltip .bubble{position:absolute;bottom:125%;left:50%;transform:translateX(-50%);background:var(--brand-900);color:#fff;padding:6px 12px;border-radius:var(--radius-xs);font-size:12px;white-space:nowrap;box-shadow:var(--shadow-sm)}
+  .modal{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:32px;width:360px;display:flex;flex-direction:column;gap:12px}
+  .modal .head{display:flex;justify-content:space-between;align-items:center}
+  .modal h3{margin:0;font-family:var(--font-display);font-size:18px;color:var(--brand-900)}
+</style></head>
+<body>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div class="alert" style="background:var(--surface-blue-pale);color:var(--brand-900)"><i class="ph-duotone ph-check-circle"></i><div class="txt"><strong>Feltöltve!</strong><span class="sub">A videódat megkaptuk, hamarosan elkezdjük a szerkesztést.</span></div></div>
+    <div class="alert" style="background:color-mix(in oklab, var(--accent-teal) 20%, white);color:#0a6b4f"><i class="ph-duotone ph-info"></i><div class="txt"><strong>Tipp</strong><span class="sub">7 munkanapon belül elkészül a videód.</span></div></div>
+    <div class="alert" style="background:var(--surface-peach-pale);color:#8a5a1f"><i class="ph-duotone ph-warning"></i><div class="txt"><strong>Figyelem</strong><span class="sub">A fájl mérete közel a limithez.</span></div></div>
+  </div>
+  <div style="display:flex;gap:40px;align-items:flex-start">
+    <div class="tooltip"><span class="bubble">7 munkanapon belül</span><span style="padding:6px 14px;border-radius:var(--radius-full);background:var(--surface-beige);font-size:13px">Határidő badge</span></div>
+    <div class="modal">
+      <div class="head"><h3>Törlöd a videót?</h3><i class="ph-bold ph-x" style="color:var(--color-text-secondary)"></i></div>
+      <span style="font-size:14px;color:var(--color-text-secondary)">Ez a művelet nem vonható vissza.</span>
+    </div>
+  </div>
+</body></html>

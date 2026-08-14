@@ -1,0 +1,8 @@
+:root {
+  --shadow-sm: 0px 8px 20px 0px var(--shadow-black-soft);
+  --shadow-md: 0px 16px 32px -4px var(--shadow-tint-mid), 0px 4px 4px -4px var(--shadow-tint-soft);
+  --shadow-lg: 0px 12px 60px 0px var(--shadow-black-strong);
+  --shadow-xl: 0px 16px 32px -8px var(--shadow-tint-strong);
+  --shadow-inset-border: inset 0 0 0 2px var(--brand-900);
+  --shadow-focus-ring: 0 0 0 3px color-mix(in oklab, var(--accent-purple) 35%, transparent); /* addition — keyboard focus */
+}

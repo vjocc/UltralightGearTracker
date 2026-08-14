@@ -1,28 +1,58 @@
 /**
  * Tailwind toolchain config.
  *
- * P1 (Designer round) — föld-színpaletta a túrázós hangulathoz.
+ * P4.0 (Sprint 4 — MemoFox design refactor) — palette, radius, typography swap.
  *
- * A P1 GPX import card bevezetésével landelnek az első design tokenek.
- * A "komfort + súly" mottóhoz a hideg kék/szürke helyett meleg föld-színek
- * (barna, olíva, homok, mohás zöld) kerülnek a rendszerbe. Ezeket a
- * "Trip Plan" / "GPX upload" blokk használja először; a többi oldal
- * fokozatosan költözik át a későbbi round-okban.
+ * Source of truth: docs/Design-System.md §2.1 (brand colors), §2.2
+ * (neutrals), §3.3 (type scale), plus docs/sprint-4-architect-brief.md
+ * §2 P4.0. Old P1 earth-palette (`bark`, `moss` legacy, `sand`, `clay`,
+ * `loam`) has been REMOVED — see migration table in
+ * docs/sprint-4-architect-brief.md §2 P4.3 (UI refactor) for the
+ * mechanical rewrite of ~125 call-sites in 8 component files.
  *
- * - bark    : sötét barna (primary text, headings)
- * - moss    : mohás zöld (primary action / accent — track, CTA)
- * - sand    : homok (felületek, kártya-háttér)
- * - clay    : agyag-barna (keretek, elválasztók)
- * - loam    : sötét olíva (secondary text, lábjegyzet)
+ * Brand palette (full 50–900 scale, hex values derived from the
+ * design system seeds):
+ *  - brand     : Brand Purple `#7936EB` — primary CTA, action accent
+ *  - espresso  : Ink Brown    `#2D0E05` — primary text, dark process card bg
+ *  - ember     : Ember Orange `#EB5D36` — icon outline on dark cards,
+ *                                          accent badges
+ *  - moss      : Moss Olive   `#867E36` — divider band, secondary accent
  *
- * A Tailwind beépített `stone-*`, `amber-*`, `lime-*` skáláit
- * használjuk a kompozícióhoz, hogy ne kelljen egyedi hex értékeket
- * szórni a markupba. Az itt definiált szemantikus nevek bridge-ként
- * szolgálnak, hogy a későbbi round-okban egy lépésben át tudjuk
- * színezni az egész appot anélkül, hogy minden utility class-t
- * végig kéne nézni.
+ * Neutrals (single-hex tokens, also exposed at 50–900 for consistency
+ * with the P4.3 spread-usage):
+ *  - fogGrey   : `#D9DDDE`  section background (neutral grey)
+ *  - iceBlue   : `#EDF4F6`  light blue card bg
+ *  - blushLight: `#FBF4F2`  cream section bg + feature cards
+ *  - blushMid  : `#EBE2DF`  taupe section bg
+ *  - umber     : `#573933`  footer illustration mid-layer
+ *
+ * Border-radius tokens (MemoFox §3 — playful rounded form language):
+ *  - pill    : 9999px  — CTA buttons
+ *  - card    : 24px    — large cards
+ *  - cardLg  : 28px    — hero / showcase cards
+ *  - panel   : 18px    — overlay panels
+ *  - panelSm : 16px    — small inline panels
+ *
+ * Typography tokens (MemoFox §3 — display + body font pairing):
+ *  - display : Baloo 2 (Google Fonts, rounded ExtraBold) — H1–H3, button labels
+ *  - body    : Inter (Google Fonts) — body, nav, UI
+ *  See nuxt.config.ts app.head.link for the Google Fonts <link>.
  */
 import type { Config } from 'tailwindcss';
+
+/** Inline scale generator — keeps the 50–900 entries readable. */
+const scale = (seed: string): Record<string, string> => ({
+  50: seed,
+  100: seed,
+  200: seed,
+  300: seed,
+  400: seed,
+  500: seed,
+  600: seed,
+  700: seed,
+  800: seed,
+  900: seed,
+});
 
 export default <Partial<Config>>{
   content: [
@@ -35,49 +65,133 @@ export default <Partial<Config>>{
   theme: {
     extend: {
       colors: {
-        // Föld-színpaletta — túrázós, meleg, alacsony kontrasztú.
-        bark: {
-          50: '#faf6f1', // háttér (legvilágosabb)
-          100: '#f1e8db',
-          200: '#e2cfb4',
-          300: '#caab83',
-          500: '#8a6b46',
-          700: '#5a4528', // secondary text
-          900: '#2d2218', // primary text / headings
+        // --- Brand palette (full 50–900) -------------------------------------
+        brand: {
+          50: '#F4ECFD',
+          100: '#E7D6FB',
+          200: '#CFADF6',
+          300: '#B584F1',
+          400: '#9A5BED',
+          500: '#7936EB', // design-system seed
+          600: '#6027C2',
+          700: '#481B94',
+          800: '#311267',
+          900: '#1A0939',
+        },
+        espresso: {
+          50: '#F8F2EF',
+          100: '#E9D9D0',
+          200: '#C9A99A',
+          300: '#9C7661',
+          400: '#6B4734',
+          500: '#3F2117',
+          600: '#34180E',
+          700: '#2A130A',
+          800: '#210E07',
+          900: '#2D0E05', // design-system seed (Ink Brown)
+        },
+        ember: {
+          50: '#FDF1EB',
+          100: '#FBDDCD',
+          200: '#F7B89D',
+          300: '#F2946D',
+          400: '#EF7A50',
+          500: '#EB5D36', // design-system seed (Ember Orange)
+          600: '#CC4A23',
+          700: '#A0391B',
+          800: '#742912',
+          900: '#481809',
         },
         moss: {
-          50: '#f4f7ec',
-          100: '#e6ecd0',
-          300: '#b5c485',
-          500: '#7d9a3f', // hover state
-          600: '#627a2c', // default
-          700: '#4d7c0f', // primary action / track stroke (lime-700 rokona)
-          800: '#3a5a0d',
-          900: '#26400a', // badge sötét szöveg (elfogadva)
+          50: '#F6F5EC',
+          100: '#E8E6C9',
+          200: '#D3CF9F',
+          300: '#BBB774',
+          400: '#A39E53',
+          500: '#867E36', // design-system seed (Moss Olive)
+          600: '#706930',
+          700: '#5A552A',
+          800: '#454123',
+          900: '#302D1A',
         },
-        sand: {
-          50: '#fbf7ee', // kártya-háttér (legvilágosabb)
-          100: '#f5ecd6',
-          200: '#ead9b0',
-          300: '#d9c39b', // badge keret (elutasítva)
+        // --- Neutrals (full 50–900) ------------------------------------------
+        fogGrey: {
+          50: '#F7F8F8',
+          100: '#EEEFEF',
+          200: '#E3E4E5',
+          300: '#D9DDDE', // design-system seed
+          400: '#B8BDBE',
+          500: '#979D9F',
+          600: '#767D7F',
+          700: '#555D5F',
+          800: '#343D40',
+          900: '#131E20',
         },
-        clay: {
-          100: '#ede2c7', // badge háttér (pending)
-          200: '#d9c39b', // keret
-          300: '#c0a472', // erősebb keret / focus ring
-          500: '#9a7a48',
-          900: '#3a2a14', // badge sötét szöveg (pending)
+        iceBlue: {
+          50: '#EDF4F6', // design-system seed
+          100: '#DDEAEE',
+          200: '#C5DBE0',
+          300: '#A9C9D0',
+          400: '#85B3BE',
+          500: '#5F9AA7',
+          600: '#427A88',
+          700: '#305C66',
+          800: '#1F3F46',
+          900: '#0E2327',
         },
-        loam: {
-          500: '#7b6438', // lábjegyzet / meta
-          700: '#5b4a26',
+        blushLight: {
+          50: '#FBF4F2', // design-system seed
+          100: '#F4E5DF',
+          200: '#E9CFC4',
+          300: '#DDB7A6',
+          400: '#C99A85',
+          500: '#A87A66',
+          600: '#855C4B',
+          700: '#624033',
+          800: '#3F271E',
+          900: '#1F110B',
+        },
+        blushMid: {
+          50: '#EBE2DF', // design-system seed
+          100: '#E0D3CE',
+          200: '#C9B4AB',
+          300: '#AE9386',
+          400: '#947767',
+          500: '#795E50',
+          600: '#5F493D',
+          700: '#47362D',
+          800: '#31251E',
+          900: '#1C130E',
+        },
+        umber: {
+          50: '#F1E9E6',
+          100: '#DAC8C0',
+          200: '#C2A89D',
+          300: '#A78A7C',
+          400: '#896C5C',
+          500: '#71564A',
+          600: '#5C433B',
+          700: '#573933', // design-system seed (Mountain Mid)
+          800: '#3B2620',
+          900: '#1F1310',
         },
       },
+      borderRadius: {
+        // MemoFox design §3 — playful rounded form language
+        pill: '9999px',   // CTA buttons
+        card: '24px',     // large cards
+        cardLg: '28px',   // hero / showcase cards
+        panel: '18px',    // overlay panels
+        panelSm: '16px',  // small inline panels
+      },
       fontFamily: {
-        // A P1 summary card stat-soraihoz tabular-nums kell — ezt
-        // utility class-szal oldjuk meg (lásd pages/trips/[id].vue),
-        // nem kell új fontFace. A default sans marad.
+        // MemoFox §3.1 — display: rounded ExtraBold sans-serif
+        display: ['"Baloo 2"', 'ui-rounded', 'system-ui', 'sans-serif'],
+        // MemoFox §3.2 — body: humanist sans-serif
+        body: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        // Backwards-compat fallback (P3.x components used `font-sans`).
         sans: [
+          'Inter',
           'ui-sans-serif',
           'system-ui',
           '-apple-system',
@@ -87,10 +201,17 @@ export default <Partial<Config>>{
           'sans-serif',
         ],
       },
-      // Tabular-nums utility (stat-sorokhoz: "12.4 km").
-      // Tailwind 3.4+ támogatja a font-variant-numeric értékeit a
-      // numeric variantokon keresztül — a későbbi round-okban bármely
-      // stat-sor ráhúzhatja ezt az utility-t.
+      fontSize: {
+        // MemoFox §3.3 — desktop scale, rounded to clean px values
+        hero:    ['56px',  { lineHeight: '1.1',  fontWeight: '800', letterSpacing: '-0.01em' }],
+        h2:      ['40px',  { lineHeight: '1.15', fontWeight: '800', letterSpacing: '-0.01em' }],
+        h3:      ['26px',  { lineHeight: '1.2',  fontWeight: '700' }],
+        h4:      ['20px',  { lineHeight: '1.3',  fontWeight: '700' }],
+        bodyLg:  ['18px',  { lineHeight: '1.5',  fontWeight: '400' }],
+        body:    ['16px',  { lineHeight: '1.5',  fontWeight: '400' }],
+        button:  ['16px',  { lineHeight: '1.2',  fontWeight: '600' }],
+        nav:     ['15px',  { lineHeight: '1.3',  fontWeight: '500' }],
+      },
     },
   },
   plugins: [],

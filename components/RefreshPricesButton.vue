@@ -29,10 +29,10 @@ const emit = defineEmits<{
       :aria-busy="loading ? 'true' : 'false'"
       @click="emit('refresh')"
     >
-      <span
+      <AppSpinner
         v-if="loading"
-        class="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
-        aria-hidden="true"
+        class="mr-2"
+        label="Frissítés folyamatban"
       />
       {{ loading ? 'Refreshing…' : 'Refresh prices' }}
     </button>

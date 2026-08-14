@@ -1,0 +1,50 @@
+:root {
+  /* Ink / brand browns */
+  --ink-950: #1a1512;         /* rgb(26,21,18) — deepest text, rare */
+  --brand-900: #2e0e05;       /* rgb(46,14,5) — primary ink, hero bg, dark cards */
+  --brand-800: #4b3d33;       /* rgb(75,61,51) */
+  --brand-700: #3c3129;       /* rgb(60,49,41) */
+
+  /* Accents — one hue each, used sparingly as highlights */
+  --accent-orange: #eb5e37;   /* rgb(235,94,55) — icon fills, fox mark */
+  --accent-purple: #7937eb;   /* rgb(121,55,235) — primary CTA */
+  --accent-teal: #11d69e;     /* rgb(17,214,158) — hero CTA accent */
+  --accent-olive: #867e37;    /* rgb(134,126,55) — footer band */
+
+  /* Surfaces */
+  --surface-white: #ffffff;
+  --surface-cream: #fbf9f6;      /* rgb(251,249,246) */
+  --surface-peach: #fbf5f3;      /* rgb(251,245,243) — card fill */
+  --surface-peach-light: #fdece8;/* rgb(253,236,232) — floating callout */
+  --surface-peach-pale: #fadad1; /* rgb(250,218,209) */
+  --surface-peach-pale-2: #ffeeeb;/* rgb(255,238,235) */
+  --surface-off-white: #faf7f6;  /* rgb(250,247,246) */
+  --surface-beige: #ebe3e0;      /* rgb(235,227,224) — section bg */
+  --surface-cool: #d9dedf;       /* rgb(217,222,223) — section bg */
+  --surface-blue-pale: #eef5f7;  /* rgb(238,245,247) — section bg */
+
+  /* Shadows (opacity-based, layer on brand-ink) */
+  --shadow-tint-soft: rgba(12,12,13,0.05);
+  --shadow-tint-mid: rgba(12,12,13,0.1);
+  --shadow-tint-strong: rgba(12,12,13,0.4);
+  --shadow-black-soft: rgba(0,0,0,0.12);
+  --shadow-black-strong: rgba(0,0,0,0.4);
+
+  /* Semantic aliases */
+  --color-text-primary: var(--brand-900);
+  --color-text-secondary: var(--brand-800);
+  --color-text-inverse: var(--surface-cream);
+  --color-bg-page: var(--surface-off-white);
+  --color-bg-surface: var(--surface-white);
+  --color-bg-muted: var(--surface-beige);
+  --color-border: var(--surface-beige);
+  --color-border-strong: var(--brand-900);
+  --color-accent-primary: var(--accent-purple);
+  --color-accent-secondary: var(--accent-orange);
+
+  /* Intentional additions — not in source, needed for state colors */
+  --color-success: #1a9c6f;
+  --color-danger: #c23b2c;
+  --color-warning: #b8862f;
+  --color-info: #2f79b8;
+}

@@ -1,0 +1,169 @@
+<!-- @dsCard group="Marketing Website" viewport="1440x900" name="Home" -->
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/duotone/style.css">
+<style>
+  body{margin:0;font-family:var(--font-body)}
+  .btn{display:inline-flex;align-items:center;height:56px;padding:16px 36px;border-radius:var(--radius-pill);border:none;font-family:var(--font-body);font-weight:700;font-size:16px;cursor:pointer;white-space:nowrap}
+  .btn.md{height:48px;padding:12px 36px}
+  .btn.primary{background:var(--accent-purple);color:var(--surface-cream)}
+  .btn.outline{background:transparent;color:var(--brand-900);box-shadow:var(--shadow-inset-border)}
+  h1,h2,h3,h4{font-family:var(--font-display);color:var(--brand-900);margin:0}
+  p{margin:0;color:var(--brand-900)}
+  .row{display:flex}
+  .col{display:flex;flex-direction:column}
+</style>
+</head><body>
+
+<section style="position:relative;height:625px;overflow:hidden;background:url(../../assets/images/hero-mountain.jpg) center/cover">
+  <div style="position:absolute;left:0;top:0;right:0;padding:48px 229px 0;display:flex;justify-content:space-between;align-items:center;z-index:2">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg width="30" height="21" viewBox="0 0 46 32"><path d="M 16.642 3.191 C 12.724 3.191 9.207 5.033 6.803 7.955 C 8.538 12.302 12.019 15.628 16.642 16.756 Z" fill="var(--brand-800)"/><path d="M 4.157 0 C 9.554 2.479 11.922 4.817 18.282 8.809 L 31.863 17.55 L 0 32 C 2.562 20.531 4.325 14.456 4.157 0 Z" transform="translate(14,0)" fill="var(--brand-800)"/><path d="M 15.667 7.319 C 8.928 7.303 4.353 4.364 1.902 0 C 0.692 2.153 0 4.653 0 7.319 C 0.003 15.12 5.767 21.509 13.09 22.107 C 14.329 15.468 15.476 11.251 15.667 7.319 Z" transform="translate(0,10)" fill="var(--accent-orange)"/></svg>
+      <span style="font-family:var(--font-display);font-weight:700;font-size:16px;color:var(--brand-800)">Memo<span style="color:var(--accent-orange)">Fox</span></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:40px">
+      <nav style="display:flex;gap:32px;font-weight:600;font-size:14px;color:var(--brand-900)"><span>Blog</span><span>Eddigi munkáink</span><span>Kapcsolat</span></nav>
+      <button class="btn outline md">Profil</button>
+    </div>
+  </div>
+  <img src="../../assets/images/hero-drone.png" style="position:absolute;right:60px;top:145px;width:187px">
+  <div style="position:absolute;left:229px;top:158px;width:711px;display:flex;flex-direction:column;gap:40px;align-items:center;text-align:center">
+    <div class="col" style="gap:24px">
+      <h1 style="font-weight:700;font-size:32px;line-height:48px">Küldetésünk, hogy megmentsük<br>a felhőkbe zárt emlékeidet</h1>
+      <p style="font-family:var(--font-accent);font-weight:500;font-size:18px;line-height:28px">Készen állsz a kalandra? Egészen idáig utaztál, így itt az ideje,<br>hogy találkozz a MEMOFOX Videó szerkesztő szolgáltatásával.</p>
+    </div>
+    <div style="display:flex;gap:16px">
+      <button class="btn primary">Töltsd fel a videóid!</button>
+      <button class="btn outline">Ismerd meg!</button>
+    </div>
+  </div>
+  <img src="../../assets/images/hero-foreground-figures.png" style="position:absolute;left:0;bottom:0;width:100%;pointer-events:none">
+</section>
+
+<section class="row" style="height:408px;background:var(--surface-cool)">
+  <div class="col" style="flex:1;gap:24px;justify-content:center;padding:0 160px 0 80px">
+    <h2 style="font-size:24px;line-height:36px">Mindenkinek van kamerája</h2>
+    <p style="font-size:16px;line-height:24px;font-weight:500">A kérdés az, hogy mit kezdesz azzal a számtalan felvétellel, amelyeket a fontos eseményeiden készítettél?</p>
+  </div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;padding:0 40px">
+    <img src="../../assets/images/photo-camera-hands.png" style="width:464px;height:328px;object-fit:cover;border-radius:20px;box-shadow:var(--shadow-lg)">
+  </div>
+</section>
+
+<section class="row" style="height:408px;background:var(--surface-blue-pale)">
+  <div style="flex:1;display:flex;align-items:center;justify-content:flex-start;padding:0 40px">
+    <img src="../../assets/images/photo-friends-cameras.jpg" style="width:464px;height:328px;object-fit:cover;border-radius:20px;box-shadow:var(--shadow-lg)">
+  </div>
+  <div class="col" style="flex:1;gap:24px;justify-content:center;padding:0 80px 0 60px">
+    <h2 style="font-size:24px;line-height:36px">Bízd ránk!</h2>
+    <p style="font-size:16px;line-height:24px">A feltöltött videóidat egy hangulatos klippé varázsoljuk, amely igazi audiovizuális filmélmény lesz a néző számára. Hangulatos zenével, a legjobb pillanatok kiemelésével egy maximálisan testre szabott kisfilmet kapsz.</p>
+  </div>
+</section>
+
+<section class="col" style="background:var(--surface-peach);padding:120px 80px;gap:64px;align-items:center">
+  <div class="col" style="max-width:752px;gap:12px;align-items:center;text-align:center">
+    <h2 style="font-size:32px;line-height:48px">Mert az időd drága</h2>
+    <p style="font-size:18px;line-height:28px">A videó szerkesztés pedig nem könnyű. De Te csak dőlj hátra és lazíts, miközben felejthetetlen videót készítünk Neked!</p>
+  </div>
+  <div class="row" style="gap:24px;width:100%">
+    <div class="col" style="flex:1;height:304px;border-radius:32px;background:var(--brand-900);gap:24px;align-items:center;justify-content:center;padding:40px;text-align:center">
+      <i class="ph-duotone ph-shopping-cart-simple" style="font-size:48px;color:var(--accent-orange)"></i>
+      <div class="col" style="gap:8px">
+        <h3 style="font-size:20px;line-height:32px;color:var(--surface-cream)">Rendeld meg!</h3>
+        <p style="font-size:16px;line-height:24px;color:var(--surface-cream)">Válaszd ki a szerkesztés stílusát, hosszát és a feltöltendő felvételek méretét.</p>
+      </div>
+    </div>
+    <div class="col" style="flex:1;height:304px;border-radius:32px;background:var(--surface-white);box-shadow:var(--shadow-sm);gap:24px;align-items:center;justify-content:center;padding:40px;text-align:center">
+      <i class="ph-duotone ph-upload-simple" style="font-size:48px;color:var(--accent-orange)"></i>
+      <div class="col" style="gap:8px">
+        <h3 style="font-size:20px;line-height:32px">Töltsd fel!</h3>
+        <p style="font-size:16px;line-height:24px">Töltsd fel nekünk a kamerával vagy telefonnal készített emléket, rendezvényt, vagy egy kalandot!</p>
+      </div>
+    </div>
+    <div class="col" style="flex:1;height:304px;border-radius:32px;background:var(--surface-white);box-shadow:var(--shadow-sm);gap:24px;align-items:center;justify-content:center;padding:40px;text-align:center">
+      <i class="ph-duotone ph-confetti" style="font-size:48px;color:var(--accent-orange)"></i>
+      <div class="col" style="gap:8px">
+        <h3 style="font-size:20px;line-height:32px">Ünnepelj!</h3>
+        <p style="font-size:16px;line-height:24px">7 napon belül küldjük a videót. Oszd meg a csodálatot bárkivel, bármelyik közösségi oldalon.</p>
+      </div>
+    </div>
+  </div>
+  <button class="btn md" style="background:var(--accent-purple);color:var(--surface-cream)">Megrendelem</button>
+</section>
+
+<section class="col" style="background:var(--surface-beige);padding:120px 80px;gap:64px;align-items:center">
+  <div class="col" style="max-width:752px;gap:12px;align-items:center;text-align:center">
+    <h2 style="font-size:32px;line-height:48px">Mikor válassz minket?</h2>
+    <p style="font-size:18px;line-height:28px">Mert hogy a sok felvett nyers videót külön-külön nem nézed, de ha mondjuk ezekről az eseményekről van 1 db videó, akkor azt évente egyszer biztos szívesen visszanézed</p>
+  </div>
+  <div class="col" style="gap:24px;width:100%">
+    <div class="row" style="gap:24px">
+      <div class="col" style="flex:1;min-height:324px;border-radius:12px;box-shadow:var(--shadow-sm);background:var(--surface-peach);padding:64px;gap:10px"><i class="ph-duotone ph-sun" style="font-size:48px;color:var(--accent-orange)"></i><h4 style="font-size:18px;line-height:28px">Nyaralás, városnézés</h4><p style="font-size:16px;line-height:24px">Az utazásod legszebb pillanatait egy izgalmas videóvá varázsoljuk. Az életre szóló élményt bárkivel megoszthatod.</p></div>
+      <div class="col" style="flex:1;min-height:324px;border-radius:12px;box-shadow:var(--shadow-sm);background:var(--surface-peach);padding:64px;gap:10px"><i class="ph-duotone ph-mountains" style="font-size:48px;color:var(--accent-orange)"></i><h4 style="font-size:18px;line-height:28px">Túrázás, felfedezés</h4><p style="font-size:16px;line-height:24px">Ha az aktív életmódot kedveled és gyakran forog a kamerád, küldd el nekünk a felvételeidet, hogy újra átélhesd a kalandot!</p></div>
+      <div class="col" style="flex:1;min-height:324px;border-radius:12px;box-shadow:var(--shadow-sm);background:var(--surface-peach);padding:64px;gap:10px"><i class="ph-duotone ph-person-simple-ski" style="font-size:48px;color:var(--accent-orange)"></i><h4 style="font-size:18px;line-height:28px">Snowboard, evezés, hegymászás</h4><p style="font-size:16px;line-height:24px">Megkeressük és szerkesztjük a legizgalmasabb pillanatokat, hogy újra átéld az adrenalint.</p></div>
+    </div>
+    <div class="row" style="gap:24px">
+      <div class="col" style="flex:1;min-height:324px;border-radius:12px;box-shadow:var(--shadow-sm);background:var(--surface-peach);padding:64px;gap:10px"><i class="ph-duotone ph-champagne" style="font-size:48px;color:var(--accent-orange)"></i><h4 style="font-size:18px;line-height:28px">Esküvő, évforduló, születésnap</h4><p style="font-size:16px;line-height:24px">Kiválogatjuk és szerkesztjük a legszebb pillanatokat, hogy azok örök emlékké váljanak.</p></div>
+      <div class="col" style="flex:1;min-height:324px;border-radius:12px;box-shadow:var(--shadow-sm);background:var(--surface-peach);padding:64px;gap:10px"><i class="ph-duotone ph-video-camera" style="font-size:48px;color:var(--accent-orange)"></i><h4 style="font-size:18px;line-height:28px">Vlogolás, Edukáció, stúdió munkák</h4><p style="font-size:16px;line-height:24px">Segítünk a videóid vágásában és finomhangolásában, hogy a legjobb végeredményt kaphasd.</p></div>
+      <div class="col" style="flex:1;min-height:324px;border-radius:12px;box-shadow:var(--shadow-sm);background:var(--surface-peach);padding:64px;gap:10px"><i class="ph-duotone ph-clock-countdown" style="font-size:48px;color:var(--accent-orange)"></i><h4 style="font-size:18px;line-height:28px">Felszabadítjuk az idődet</h4><p style="font-size:16px;line-height:24px">Elúsztál és kifutsz az időből? Segítjük a projektjeidet, hogy Te csak a lényegre fókuszálhass!</p></div>
+    </div>
+  </div>
+  <button class="btn outline">Töltsd fel a videóid!</button>
+</section>
+
+<section class="col" style="background:var(--surface-off-white);padding:120px 0;gap:64px;align-items:center">
+  <div class="col" style="max-width:752px;gap:12px;align-items:center;text-align:center">
+    <h2 style="font-size:32px;line-height:48px">Minden MEMOFOX videó<br>tartalmazza</h2>
+    <p style="font-size:18px;line-height:28px">A felvételeidet dinamikus átmenetekkel, figyelemfelkeltő színkorrekcióval és képstabilizálással szerkesztjük. A profik által szerkesztett emlékedet mindenki szeretni fogja!</p>
+  </div>
+  <div style="position:relative;width:89%;border-radius:12px;box-shadow:inset 0 0 0 2px var(--surface-beige);overflow:hidden">
+    <img src="../../assets/images/showcase-bg.png" style="width:100%;display:block">
+    <div class="col" style="position:absolute;left:24%;top:32px;width:52%;border-radius:12px;background:var(--surface-peach-light);box-shadow:var(--shadow-xl);padding:48px 64px;gap:16px">
+      <h3 style="font-size:20px;line-height:32px;text-align:center">Rázkódás javítása</h3>
+      <p style="font-size:14px;line-height:20px;text-align:center">Minden videóból kihozzuk a lehető legtöbbet. Javítjuk a kéz által okozott képremegést, hiszen senki sem született gimbal-nak. Szerkesztőink néha kész csodákat művelnek a felvételekkel.</p>
+    </div>
+  </div>
+  <button class="btn outline">Töltsd fel a videóid!</button>
+</section>
+
+<div style="height:200px;background:var(--accent-olive)"></div>
+
+<section class="col" style="background:var(--surface-beige);padding:100px 5%;gap:40px">
+  <div style="position:relative;height:280px;display:flex;align-items:center">
+    <div style="display:flex;gap:16px;margin-right:34%"><img src="../../assets/images/photo-bike-handlebar.jpg" style="width:150px;height:200px;object-fit:cover;border-radius:12px"><img src="../../assets/images/photo-mixer.jpg" style="width:150px;height:200px;object-fit:cover;border-radius:12px"></div>
+    <div class="col" style="position:absolute;left:42%;width:360px;border-radius:12px;background:var(--surface-peach-light);box-shadow:var(--shadow-md);padding:32px 40px;gap:16px">
+      <h3 style="font-size:20px;line-height:32px">Rázkódás javítása</h3>
+      <p style="font-size:16px;line-height:24px">Minden videóból kihozzuk a lehető legtöbbet. Javítjuk a kéz által okozott képremegést, hiszen senki sem született gimbal-nak.</p>
+    </div>
+  </div>
+  <div style="position:relative;height:280px;display:flex;align-items:center;justify-content:flex-end">
+    <div class="col" style="position:absolute;left:12%;width:360px;border-radius:12px;background:var(--surface-peach-pale);box-shadow:var(--shadow-md);padding:32px 40px;gap:16px">
+      <h3 style="font-size:20px;line-height:32px">Zenék és hangok</h3>
+      <p style="font-size:16px;line-height:24px">Tökéletesen illesztett zene és finomhangolt effektek. A videódat a 8000+ jogdíjmentes dalunkból választott zene ütemére szerkesztjük.</p>
+    </div>
+    <div style="display:flex;gap:16px;margin-left:34%"><img src="../../assets/images/photo-beach.jpg" style="width:150px;height:200px;object-fit:cover;border-radius:12px"><img src="../../assets/images/photo-colorwheel.jpg" style="width:150px;height:200px;object-fit:cover;border-radius:12px"></div>
+  </div>
+  <div style="position:relative;height:280px;display:flex;align-items:center">
+    <div style="display:flex;gap:16px;margin-right:34%"><img src="../../assets/images/photo-underwater.jpg" style="width:150px;height:200px;object-fit:cover;border-radius:12px"><img src="../../assets/images/photo-camera-crowd.jpg" style="width:150px;height:200px;object-fit:cover;border-radius:12px"></div>
+    <div class="col" style="position:absolute;left:42%;width:360px;border-radius:12px;background:var(--surface-peach-light);box-shadow:var(--shadow-md);padding:32px 40px;gap:16px">
+      <h3 style="font-size:20px;line-height:32px">Dinamikus átmenetek a felvételek között</h3>
+      <p style="font-size:16px;line-height:24px">A Dinamikus átmenetek lehetővé teszi a felvételek közötti rugalmas, ritmusos és egyedi megjelenítését.</p>
+    </div>
+  </div>
+  <div style="position:relative;height:280px;display:flex;align-items:center;justify-content:flex-end">
+    <div class="col" style="position:absolute;left:12%;width:360px;border-radius:12px;background:var(--surface-peach-pale);box-shadow:var(--shadow-md);padding:32px 40px;gap:16px">
+      <h3 style="font-size:20px;line-height:32px">Szín korrekciók</h3>
+      <p style="font-size:16px;line-height:24px">A Szín korrekciós funkció segítségével a felvételek színét állíthatjuk be a kívánt árnyalatokra.</p>
+    </div>
+    <div style="display:flex;gap:16px;margin-left:34%"><img src="../../assets/images/photo-bike-handlebar.jpg" style="width:150px;height:200px;object-fit:cover;border-radius:12px"><img src="../../assets/images/photo-lens.jpg" style="width:150px;height:200px;object-fit:cover;border-radius:12px"></div>
+  </div>
+</section>
+
+<footer style="position:relative;height:280px;background:var(--surface-peach-pale-2);overflow:hidden">
+  <img src="../../assets/images/cover-mountains.svg" style="position:absolute;left:7%;top:60%;width:95%;opacity:0.55">
+  <div style="position:absolute;inset:0;background:var(--accent-olive);clip-path:polygon(0 78%, 100% 65%, 100% 100%, 0 100%)"></div>
+</footer>
+
+</body></html>

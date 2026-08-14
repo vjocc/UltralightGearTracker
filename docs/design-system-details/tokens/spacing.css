@@ -1,0 +1,21 @@
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 40px;
+  --space-8: 48px;
+  --space-9: 64px;
+  --space-10: 80px;
+  --space-11: 120px;
+
+  --radius-xs: 4px;   /* addition — checkboxes, small chips */
+  --radius-sm: 8px;   /* addition — inputs, tags */
+  --radius-md: 12px;  /* source — content cards */
+  --radius-lg: 20px;  /* source — image cards */
+  --radius-xl: 32px;  /* source — step cards */
+  --radius-pill: 100px;/* source — buttons */
+  --radius-full: 9999px;
+}

@@ -290,10 +290,10 @@ onBeforeUnmount(() => {
               class="btn-primary"
               :aria-busy="submitting ? 'true' : 'false'"
             >
-              <span
+              <AppSpinner
                 v-if="submitting"
-                class="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
-                aria-hidden="true"
+                class="mr-2"
+                label="Mentés folyamatban"
               />
               {{ submitting ? 'Saving' : isEdit ? 'Save changes' : 'Add item' }}
             </button>

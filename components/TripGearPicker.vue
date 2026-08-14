@@ -164,7 +164,7 @@ const handleSave = () => {
         >
           <button
             type="button"
-            class="rounded border border-gray-300 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+            class="btn-secondary px-2 py-0.5 text-xs"
             aria-label="Mennyiség csökkentése"
             :disabled="draft[g.id].quantity <= 1"
             @click="decrement(g.id)"
@@ -176,7 +176,7 @@ const handleSave = () => {
           </span>
           <button
             type="button"
-            class="rounded border border-gray-300 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+            class="btn-secondary px-2 py-0.5 text-xs"
             aria-label="Mennyiség növelése"
             :disabled="draft[g.id].quantity >= 99"
             @click="increment(g.id)"
@@ -195,10 +195,10 @@ const handleSave = () => {
         :aria-busy="submitting ? 'true' : 'false'"
         @click="handleSave"
       >
-        <span
+        <AppSpinner
           v-if="submitting"
-          class="spinner mr-2 inline-block h-4 w-4"
-          aria-hidden="true"
+          class="mr-2"
+          label="Mentés folyamatban"
         />
         {{ submitting ? 'Saving' : 'Save gear' }}
       </button>

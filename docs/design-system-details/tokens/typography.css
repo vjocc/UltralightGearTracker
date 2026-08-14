@@ -1,0 +1,23 @@
+:root {
+  --font-display: "Unbounded", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-accent: "Quicksand", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Display family (Unbounded, bold) — from source + filled-in smaller steps */
+  --text-display-size: 48px; --text-display-lh: 56px; --text-display-weight: 800; /* addition: hero/marketing headline above h1 */
+  --text-h1-size: 32px; --text-h1-lh: 48px; --text-h1-weight: 700;   /* source: section titles */
+  --text-h2-size: 24px; --text-h2-lh: 36px; --text-h2-weight: 700;   /* source: subsection titles */
+  --text-h3-size: 20px; --text-h3-lh: 32px; --text-h3-weight: 700;   /* source: step-card titles */
+  --text-h4-size: 18px; --text-h4-lh: 28px; --text-h4-weight: 700;   /* source: content-card titles */
+  --text-h5-size: 16px; --text-h5-lh: 24px; --text-h5-weight: 700;   /* addition: small titles, table headers */
+  --text-h6-size: 14px; --text-h6-lh: 20px; --text-h6-weight: 700;   /* addition: smallest titles, labels */
+
+  /* Body family (Plus Jakarta Sans) */
+  --text-body-lg-size: 18px; --text-body-lg-lh: 28px; --text-body-lg-weight: 400; /* source */
+  --text-body-size: 16px; --text-body-lh: 24px; --text-body-weight: 400;         /* source */
+  --text-body-sm-size: 14px; --text-body-sm-lh: 20px; --text-body-sm-weight: 500; /* source */
+  --text-caption-size: 12px; --text-caption-lh: 16px; --text-caption-weight: 500; /* addition */
+  --text-overline-size: 11px; --text-overline-lh: 16px; --text-overline-weight: 700; /* addition — badges, eyebrow labels */
+
+  --tracking-overline: 0.06em;
+}

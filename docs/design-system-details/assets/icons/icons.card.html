@@ -1,0 +1,33 @@
+<!-- @dsCard group="Iconography" viewport="700x340" name="Content icons + Phosphor" -->
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/duotone/style.css">
+<style>body{padding:24px;background:var(--color-bg-page);font-family:var(--font-body)}
+.label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-secondary);margin-bottom:10px}
+.grid{display:flex;gap:20px;flex-wrap:wrap}
+.icon-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;width:80px}
+.icon-wrap span{font-size:10px;text-align:center;color:var(--color-text-secondary)}
+</style></head>
+<body>
+<div style="margin-bottom:20px">
+  <div class="label">Brand content icons (from Figma — Outdoors Water Sun + CircleWavyCheck)</div>
+  <div class="grid" id="icons"></div>
+</div>
+<div>
+  <div class="label">General UI iconography — Phosphor Duotone (CDN substitute, no icon system in source)</div>
+  <div style="display:flex;gap:16px;font-size:28px;color:var(--brand-900)">
+    <i class="ph-duotone ph-upload-simple"></i><i class="ph-duotone ph-play-circle"></i><i class="ph-duotone ph-heart"></i><i class="ph-duotone ph-share-network"></i><i class="ph-duotone ph-camera"></i><i class="ph-duotone ph-video-camera"></i><i class="ph-duotone ph-user-circle"></i><i class="ph-duotone ph-bell"></i><i class="ph-duotone ph-gear"></i><i class="ph-duotone ph-check-circle"></i>
+  </div>
+</div>
+<script type="module">
+import icons from './icon-data.js';
+const grid = document.getElementById('icons');
+for (const name of Object.keys(icons)) {
+  const d = icons[name];
+  const short = name.replace('OutdoorsWaterSunType','').replace('CircleWavyCheckType','');
+  const wrap = document.createElement('div'); wrap.className='icon-wrap';
+  wrap.innerHTML = `<svg width="40" height="40" viewBox="${d.viewBox}" style="color:var(--accent-orange)">${d.body}</svg><span>${short}</span>`;
+  grid.appendChild(wrap);
+}
+</script>
+</body></html>
