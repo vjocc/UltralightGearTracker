@@ -8,9 +8,10 @@ export type UUID = string;
 
 export interface CategoryRow {
   id: UUID;
-  user_id: UUID;
   name: string;
   slug: string;
+  description?: string | null;
+  display_order: number;
   created_at: string;
   updated_at: string;
 }

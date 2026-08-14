@@ -15,7 +15,6 @@
  */
 import { z } from 'zod';
 import { gearCreateSchema } from '~/shared/gearSchemas';
-import { categoryCreateSchema } from '~/shared/categorySchemas';
 import type { GearItemRow, CategoryRow } from '~/types/db';
 
 const props = defineProps<{
@@ -68,10 +67,6 @@ watch(
   ([open]) => {
     if (open) {
       resetForm();
-      // New draft → also reset the inline category sub-form so reopening
-      // the modal doesn't carry a half-filled create form across gear rows.
-      showCreateCategory.value = false;
-      resetCategoryForm();
     }
   },
   { immediate: true }
@@ -104,86 +99,10 @@ const canSubmit = computed(() => {
   return validation.value.success;
 });
 
-// --- Inline "create a category" sub-form -------------------------------------
-// When the user has no categories yet, the modal surfaces a single secondary
-// button that toggles a small inline form (name + slug). On success, the new
-// category is auto-selected in the gear category <select> so the user can
-// keep filling out the gear form without ever leaving the modal.
-const { create: createCategory, state: catState } = useCategories();
-
-const showCreateCategory = ref(false);
-const newCategory = reactive({ name: '', slug: '' });
-const categoryFieldErrors = ref<Record<string, string>>({});
-const creatingCategory = ref(false);
-
-const slugify = (s: string) =>
-  s
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    // Strip anything that isn't lowercase alnum or hyphen; the server
-    // regex enforces this anyway, so we preview a clean value.
-    .replace(/[^a-z0-9-]/g, '')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 50);
-
-// Auto-suggest the slug from the name until the user edits the slug field.
-const userTouchedSlug = ref(false);
-const suggestedSlug = computed(() => slugify(newCategory.name));
-watch(
-  () => newCategory.name,
-  () => {
-    if (!userTouchedSlug.value) newCategory.slug = suggestedSlug.value;
-  }
-);
-
-const categoryValidation = computed(() =>
-  categoryCreateSchema.safeParse({
-    name: newCategory.name,
-    slug: newCategory.slug,
-  })
-);
-
-const canCreateCategory = computed(() => categoryValidation.value.success);
-
-const resetCategoryForm = () => {
-  newCategory.name = '';
-  newCategory.slug = '';
-  userTouchedSlug.value = false;
-  categoryFieldErrors.value = {};
-};
-
-const openCreateCategory = () => {
-  resetCategoryForm();
-  showCreateCategory.value = true;
-};
-
-const cancelCreateCategory = () => {
-  showCreateCategory.value = false;
-  resetCategoryForm();
-};
-
-const onSlugInput = (e: Event) => {
-  userTouchedSlug.value = true;
-  newCategory.slug = (e.target as HTMLInputElement).value;
-};
-
-const onCreateCategory = async () => {
-  if (!canCreateCategory.value) return;
-  creatingCategory.value = true;
-  try {
-    const row = await createCategory(newCategory.name, newCategory.slug);
-    // Auto-select the freshly created category and re-validate.
-    form.category_id = row.id;
-    showCreateCategory.value = false;
-    resetCategoryForm();
-  } catch {
-    // surfaced via useCategories().state.error — banner picks it up.
-  } finally {
-    creatingCategory.value = false;
-  }
-};
+// --- Categories are now a global, system-defined taxonomy (Sprint 4 v2) ----
+// The 13 top-level categories come pre-seeded; the <select> in the template
+// is populated from the `categories` prop. No inline create sub-form here.
+const { state: catState } = useCategories();
 
 const onSubmit = () => {
   if (!canSubmit.value) return;
@@ -314,102 +233,6 @@ onBeforeUnmount(() => {
             <p v-if="!validation.success" class="mt-1 text-xs text-red-600">
               {{ fieldError('category_id') || validation.error?.issues.find((i) => i.path[0] === 'category_id')?.message }}
             </p>
-
-            <!--
-              Empty state + inline create-category sub-form. The earlier
-              "go make one on the categories page" copy blocked the submit
-              button entirely; now the user can do it without leaving the
-              modal.
-            -->
-            <p v-if="categories.length === 0" class="mt-1 text-xs text-gray-500">
-              Nincs még kategória.
-              <button
-                v-if="!showCreateCategory"
-                type="button"
-                class="ml-1 font-medium text-indigo-600 underline hover:text-indigo-700"
-                @click="openCreateCategory"
-              >
-                Új kategória létrehozása
-              </button>
-            </p>
-            <p v-else-if="catState.error" class="mt-1 text-xs text-red-600">
-              {{ catState.error }}
-            </p>
-
-            <div
-              v-if="showCreateCategory"
-              class="mt-3 space-y-2 rounded border border-gray-200 bg-gray-50 p-3"
-            >
-              <div>
-                <label
-                  for="cat-name"
-                  class="block text-xs font-medium text-gray-700"
-                >
-                  Név
-                </label>
-                <input
-                  id="cat-name"
-                  v-model="newCategory.name"
-                  type="text"
-                  maxlength="50"
-                  autocomplete="off"
-                  class="input"
-                />
-              </div>
-              <div>
-                <label
-                  for="cat-slug"
-                  class="block text-xs font-medium text-gray-700"
-                >
-                  Slug
-                </label>
-                <input
-                  id="cat-slug"
-                  :value="newCategory.slug"
-                  type="text"
-                  maxlength="50"
-                  autocomplete="off"
-                  class="input"
-                  @input="onSlugInput"
-                />
-                <p
-                  v-if="
-                    !categoryValidation.success &&
-                    (newCategory.name || newCategory.slug)
-                  "
-                  class="mt-1 text-xs text-red-600"
-                >
-                  {{
-                    categoryValidation.error?.issues[0]?.message ??
-                    'Check the fields.'
-                  }}
-                </p>
-              </div>
-              <div class="flex justify-end gap-2 pt-1">
-                <button
-                  type="button"
-                  class="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
-                  @click="cancelCreateCategory"
-                >
-                  Mégse
-                </button>
-                <button
-                  type="button"
-                  :disabled="!canCreateCategory || creatingCategory"
-                  class="rounded bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-                  :aria-busy="creatingCategory ? 'true' : 'false'"
-                  @click="onCreateCategory"
-                >
-                  <AppSpinner
-                    v-if="creatingCategory"
-                    class="mr-1"
-                    size="sm"
-                    label="Létrehozás folyamatban"
-                  />
-                  Létrehozás
-                </button>
-              </div>
-            </div>
           </div>
 
           <div class="grid grid-cols-2 gap-3">
