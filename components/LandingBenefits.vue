@@ -27,12 +27,12 @@ const benefits: BenefitItem[] = [
   {
     emoji: '🗺️',
     title: 'Tervezés GPX-szel, a barátokkal',
-    body: 'Töltsd fel a kört GPX-ben, és oszd meg a túra-tervet a bandával. Közös cucc-lista, közös döntés.',
+    body: 'Töltsd fel a kört GPX-ben, és oszd meg a túra-tervet a bandával. Közös cucc-lista, közös döntés, kevesebb meglepetés a reggeli indulásnál.',
   },
   {
     emoji: '📔',
     title: 'Túra-élménybeszámoló',
-    body: 'A túra végén egy helyre gyűlnek a képek, a km-ek, a barátok visszajelzései.',
+    body: 'A túra végén egy helyre gyűlnek a képek, a km-ek, a barátok visszajelzései. A csomagod is értékelést kap — mit vittél feleslegesen, mit hagytál otthon.',
   },
 ];
 </script>

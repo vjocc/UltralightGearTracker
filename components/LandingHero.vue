@@ -151,11 +151,12 @@ onBeforeUnmount(() => {
         <h1
           class="font-display text-4xl font-extrabold leading-tight text-espresso sm:text-5xl lg:text-[56px]"
         >
-          Csomagold tudatosan a grammokat
+          Csomagolj tudatosan — nem könnyebben, hanem okosabban.
         </h1>
         <p class="mt-4 text-base font-normal leading-relaxed text-espresso/85 sm:mt-6 sm:text-lg">
-          Az Ultralight Gear Tracker segít összerakni a túrád felszerelését
-          úgy, hogy a hátad ne a grammokat, hanem az utat érezze.
+          Az Ultralight Gear Tracker segít összerakni a túracsomagodat:
+          gyűjtsd össze a cuccod, tervezd meg a túrát GPX-szel, és hívd
+          meg a bandát. A te ritmusodra, a te hegyedre.
         </p>
 
         <!-- CTA pair: MemoFox §6.3 — filled + outline, pirula, display ExtraBold -->

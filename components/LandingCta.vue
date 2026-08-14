@@ -23,22 +23,22 @@ const steps: StepItem[] = [
   {
     num: '01',
     title: 'Gyűjtsd össze a cuccod',
-    body: 'Add hozzá a fogkefétől a sátorig mindent, amit viszel. A rendszer súlyt és kategóriát rendel.',
+    body: 'Válogasd össze a felszerelésed, és mérd meg minden darab grammját. A kategóriák segítenek rendszerezni.',
   },
   {
     num: '02',
     title: 'Tervezd meg a túrát GPX-szel',
-    body: 'Töltsd fel a kört, és a terv a csomagod mellé kerül. Km, szint, időbecslés — minden egy helyen.',
+    body: 'Töltsd fel a túra útvonalát GPX-formátumban, és a rendszer kiszámolja a távot és a szintemelkedést.',
   },
   {
     num: '03',
     title: 'Oszd meg a bandával',
-    body: 'Hívd meg a túratársakat — közösen nézegetik, kommentelik, ajánlanak. Privát, csak meghívottaknak.',
+    body: 'Hívd meg a barátaidat, és ők is hozzáférhetnek a túra-csomagodhoz vagy a sajátjukhoz.',
   },
   {
     num: '04',
     title: 'Éld meg + Beszámoló',
-    body: 'A túra végén egy helyre gyűlnek a km-ek, a felszerelés-visszajelzés és a barátok élményei.',
+    body: 'A túra végén írd meg a beszámolót, töltsd fel a fotókat, és oszd meg a tapasztalataidat.',
   },
 ];
 
@@ -52,10 +52,10 @@ const ctaHref = computed(() => (user.value ? '/trips' : '/signup'));
       <!-- Section header -->
       <div class="mx-auto max-w-2xl text-center">
         <h2 class="font-display text-3xl font-extrabold text-espresso-900 sm:text-4xl lg:text-[40px]">
-          Négy lépésben a túráig
+          Így használd a túracsomagod
         </h2>
         <p class="mt-4 text-base font-normal leading-relaxed text-espresso-900/70 sm:text-lg">
-          A cuccod és a terved végigkíséri a túrát — az elejétől a beszámolóig.
+          Négy kis lépés, a saját ritmusodra — a cuccod végigkíséri a túrát.
         </p>
       </div>
 
@@ -80,9 +80,15 @@ const ctaHref = computed(() => (user.value ? '/trips' : '/signup'));
 
       <!-- Close CTA — auth-aware -->
       <div class="mt-12 text-center sm:mt-16">
-        <NuxtLink :to="ctaHref" class="btn-primary">
-          Összerakom a túracsomagomat
-        </NuxtLink>
+        <p class="mx-auto max-w-2xl font-display text-lg font-bold text-espresso-900 sm:text-xl">
+          Nem a legkevesebb gramm számít, hanem hogy jól érezd magad a
+          hegyen — pakolj a saját ritmusodra.
+        </p>
+        <div class="mt-6">
+          <NuxtLink :to="ctaHref" class="btn-primary">
+            Összerakom a túracsomagomat
+          </NuxtLink>
+        </div>
       </div>
     </div>
   </section>
