@@ -109,14 +109,14 @@ const handleSignOut = async () => {
             type="button"
             :aria-label="badgeLoading ? 'Bejövő meghívók betöltése' : `Bejövő meghívók: ${incomingCount}`"
             :disabled="badgeLoading"
-            class="relative inline-flex items-center rounded-md border border-clay-300 bg-sand-50 px-2.5 py-1 text-xs font-medium text-bark-900 hover:border-moss-500 hover:bg-moss-50 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-wait disabled:hover:border-clay-300 disabled:hover:bg-sand-50"
+            class="relative inline-flex items-center rounded-card border border-espresso-200 bg-blushLight-50 px-2.5 py-1 text-xs font-medium text-espresso-900 hover:border-moss-500 hover:bg-moss-50 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-wait disabled:hover:border-espresso-200 disabled:hover:bg-blushLight-50"
             @click="handleBadgeClick"
           >
             <span aria-hidden="true">📬</span>
             <span class="ml-1">Meghívók</span>
             <span
               class="ml-1.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums"
-              :class="badgeLoading ? 'bg-clay-100 text-bark-300' : 'bg-sand-200 text-bark-900'"
+              :class="badgeLoading ? 'bg-blushMid-100 text-espresso-300' : 'bg-blushLight-200 text-espresso-900'"
               aria-hidden="true"
             >
               {{ badgeLoading ? '•••' : incomingCount }}

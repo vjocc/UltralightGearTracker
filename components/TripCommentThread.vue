@@ -130,10 +130,10 @@ const edited = (c: TripCommentRowWithPending): boolean =>
 </script>
 
 <template>
-  <section class="rounded border border-clay-200 bg-sand-50 p-4">
+  <section class="rounded border border-espresso-200 bg-blushLight-50 p-4">
     <header class="mb-3 flex items-baseline justify-between">
-      <h3 class="text-sm font-semibold text-bark-900">Túra-hozzászólások</h3>
-      <span class="text-xs text-loam-500">
+      <h3 class="text-sm font-semibold text-espresso-900">Túra-hozzászólások</h3>
+      <span class="text-xs text-umber-500">
         {{ comments.length }} db
       </span>
     </header>
@@ -153,14 +153,14 @@ const edited = (c: TripCommentRowWithPending): boolean =>
         v-model="draft"
         :maxlength="2000"
         rows="3"
-        class="block w-full rounded border border-clay-200 px-3 py-2 text-sm focus:border-moss-700 focus:outline-none focus:ring-1 focus:ring-moss-600"
+        class="block w-full rounded border border-espresso-200 px-3 py-2 text-sm focus:border-moss-700 focus:outline-none focus:ring-1 focus:ring-moss-600"
         placeholder="Írj egy hozzászólást a túrához…"
       />
-      <div class="mt-1 flex items-center justify-between text-xs text-loam-500">
+      <div class="mt-1 flex items-center justify-between text-xs text-umber-500">
         <span>{{ trimmedDraftLength }} / 2000</span>
         <button
           type="submit"
-          class="btn-primary bg-moss-700 px-3 py-1.5 text-sand-50 hover:bg-moss-600"
+          class="btn-primary bg-moss-700 px-3 py-1.5 text-blushLight-50 hover:bg-moss-600"
           :disabled="!canSubmit || submitting"
         >
           {{ submitting ? 'Küldés…' : 'Küldés' }}
@@ -170,7 +170,7 @@ const edited = (c: TripCommentRowWithPending): boolean =>
 
     <p
       v-if="state.loading && comments.length === 0"
-      class="text-sm text-loam-500"
+      class="text-sm text-umber-500"
     >
       Betöltés…
     </p>

@@ -28,9 +28,9 @@ const colorClass = computed(
   () =>
     ({
       white: 'border-white/40 border-t-white',
-      bark: 'border-bark-700/30 border-t-bark-700',
+      bark: 'border-espresso-700/30 border-t-espresso-700',
       moss: 'border-moss-600/30 border-t-moss-600',
-      sand: 'border-clay-300 border-t-clay-500',
+      sand: 'border-blushMid-300 border-t-blushMid-500',
     })[props.color],
 );
 </script>
