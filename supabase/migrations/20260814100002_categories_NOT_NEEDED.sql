@@ -1,0 +1,40 @@
+-- ============================================================================
+-- Migration #3 — DECISION: NOT NEEDED.
+-- Architect-approved design (Trello comment on debt-tracker card
+-- 6a7d7b62d61ae7a41e8f83ce).
+--
+-- The original brief contemplated a Migration #3 to cover any remaining
+-- category_id FKs in trip_gear / trip_recaps / trip_share_invites.
+-- Verification (2026-08-14):
+--
+--   $ rg -l 'category_id' supabase/migrations/
+--     supabase/migrations/20260812000000_init_gear.sql     ← gear_items, wishlist_items (handled by #2)
+--     supabase/migrations/20260812090000_base_weight_view.sql ← reads c.name, view body unchanged after #1
+--
+--   $ rg -l 'references public.categories' supabase/migrations/
+--     supabase/migrations/20260812000000_init_gear.sql     ← gear_items + wishlist_items, both handled by #2
+--
+-- trip_gear              — schema verified, no category_id column.
+--                          (See 20260813000000_trips.sql.)
+-- trip_recaps            — schema verified, no category_id column.
+--                          (See 20260813140000_trip_recap.sql.)
+-- trip_share_invites     — schema verified, no category_id column.
+--                          (See 20260813110000_trip_share.sql.)
+-- trip_comments          — schema verified, no category_id column.
+-- friendships            — schema verified, no category_id column.
+-- gear_comments          — schema verified, no category_id column.
+-- gpx_track_points       — schema verified, no category_id column.
+-- trip_recap_photos      — schema verified, no category_id column.
+-- wishlist_alerts table  — does not exist as a separate table; columns
+--                          added to wishlist_items in
+--                          20260812183903_wishlist_alerts.sql, which
+--                          already has category_id (handled by #2).
+--
+-- Therefore Migration #3 is intentionally left empty. This file exists
+-- ONLY as a numbered placeholder + audit record so the Trello comment
+-- can reference "Migration #3 is a no-op" without ambiguity, and so a
+-- future audit can see the verification step was performed.
+-- ============================================================================
+
+-- Intentionally no SQL. See header comment.
+select 'migration #3: not needed — category_id only on gear_items + wishlist_items (both handled by #1 + #2)' as audit_note;

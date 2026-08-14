@@ -1,5 +1,6 @@
-import { serverSupabaseClient } from '#supabase/server';
+import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server';
 import type { Database } from '~/types/db';
+import { getUserId } from '~/server/utils/auth';
 
 /**
  * GET /api/trips/:id/weight
@@ -34,6 +35,16 @@ export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id');
   if (!id) {
     throw createError({ statusCode: 400, statusMessage: 'Missing id' });
+  }
+
+  // Auth guard — P4.2 Delta #2
+  const user = await serverSupabaseUser(event);
+  if (!user) {
+    throw createError({ statusCode: 401, statusMessage: 'Not signed in' });
+  }
+  const userId = getUserId(user);
+  if (!userId) {
+    throw createError({ statusCode: 401, statusMessage: 'Not signed in' });
   }
 
   const supabase = await serverSupabaseClient<Database>(event);
