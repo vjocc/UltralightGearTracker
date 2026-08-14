@@ -732,14 +732,14 @@ onMounted(async () => {
       <!-- GPX upload + summary card -->
       <section
         v-if="hasMetadata"
-        class="rounded-lg border border-clay-200 bg-sand-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
+        class="rounded-card border border-blushMid-200 bg-blushLight-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
         aria-label="A túra terve"
       >
         <header class="flex items-baseline justify-between gap-2">
-          <h3 class="text-sm font-semibold tracking-tight text-bark-900">
+          <h3 class="text-sm font-semibold tracking-tight text-espresso-900">
             A túra terve
           </h3>
-          <span class="text-xs text-loam-500 tabular-nums">
+          <span class="text-xs text-umber-500 tabular-nums">
             {{ state.current.gpx_metadata?.point_count ?? '?' }} pont
           </span>
         </header>
@@ -752,7 +752,7 @@ onMounted(async () => {
           jól olvasható.
         -->
         <dl
-          class="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-2 text-sm text-bark-900"
+          class="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-2 text-sm text-espresso-900"
           :aria-label="summaryLine"
         >
           <div
@@ -760,13 +760,13 @@ onMounted(async () => {
             :key="stat.label"
             class="flex items-baseline gap-1.5"
           >
-            <dt class="text-xs font-medium uppercase tracking-wide text-loam-500">
+            <dt class="text-xs font-medium uppercase tracking-wide text-umber-500">
               {{ stat.label }}:
             </dt>
             <dd class="tabular-nums font-semibold">
               {{ stat.value }}<span
                 v-if="stat.unit"
-                class="ml-0.5 text-xs font-normal text-loam-500"
+                class="ml-0.5 text-xs font-normal text-umber-500"
               >{{ stat.unit }}</span>
             </dd>
           </div>
@@ -774,17 +774,17 @@ onMounted(async () => {
 
         <p
           v-if="state.current.gpx_metadata?.max_elevation_m != null"
-          class="mt-2 text-xs text-loam-500"
+          class="mt-2 text-xs text-umber-500"
         >
           Max magasság:
-          <span class="tabular-nums text-bark-700">{{
+          <span class="tabular-nums text-espresso-700">{{
             state.current.gpx_metadata.max_elevation_m
           }}</span>
           m
         </p>
         <p
           v-if="state.current.gpx_metadata?.source"
-          class="mt-1 break-all text-xs text-loam-500"
+          class="mt-1 break-all text-xs text-umber-500"
         >
           Forrás: {{ state.current.gpx_metadata.source }}
         </p>
@@ -797,7 +797,7 @@ onMounted(async () => {
           <svg
             v-if="mapPreview && mapPreview.has_track && mapPreview.d"
             :viewBox="`0 0 ${mapPreview.width} ${mapPreview.height}`"
-            class="block h-[100px] w-[200px] rounded border border-clay-300 bg-white shadow-inner"
+            class="block h-[100px] w-[200px] rounded border border-blushMid-300 bg-white shadow-inner"
             role="img"
             aria-label="Túra nyomvonal előnézet"
           >
@@ -812,7 +812,7 @@ onMounted(async () => {
           </svg>
           <p
             v-else-if="mapLoading"
-            class="text-xs text-loam-500"
+            class="text-xs text-umber-500"
           >
             Track előnézet betöltése…
           </p>
@@ -822,7 +822,7 @@ onMounted(async () => {
         <div class="mt-4 flex items-center gap-2">
           <button
             type="button"
-            class="inline-flex items-center rounded-md border border-clay-300 bg-white px-3 py-1.5 text-xs font-medium text-bark-700 transition-colors hover:bg-sand-100 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60"
+            class="inline-flex items-center rounded-card border border-blushMid-300 bg-white px-3 py-1.5 text-xs font-medium text-espresso-700 transition-colors hover:bg-blushLight-100 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60"
             :disabled="gpxUploading"
             @click="triggerGpxPicker"
           >
@@ -852,35 +852,35 @@ onMounted(async () => {
         <p
           v-if="gpxLocalError"
           role="alert"
-          class="mt-3 flex items-start gap-2 rounded border border-clay-300 bg-bark-50 px-3 py-2 text-xs text-bark-700"
+          class="mt-3 flex items-start gap-2 rounded border border-blushMid-300 bg-blushLight-50 px-3 py-2 text-xs text-espresso-700"
         >
-          <span aria-hidden="true" class="mt-px text-clay-500">▲</span>
+          <span aria-hidden="true" class="mt-px text-blushMid-500">▲</span>
           <span>{{ gpxLocalError }}</span>
         </p>
       </section>
 
       <section
         v-else
-        class="rounded-lg border border-dashed border-clay-300 bg-sand-50 p-4"
+        class="rounded-card border border-dashed border-blushMid-300 bg-blushLight-50 p-4"
         aria-label="GPX terv feltöltése"
       >
-        <h3 class="text-sm font-semibold tracking-tight text-bark-900">
+        <h3 class="text-sm font-semibold tracking-tight text-espresso-900">
           Töltsd fel a túra tervét
         </h3>
-        <p class="mt-1 text-xs text-loam-500">
+        <p class="mt-1 text-xs text-umber-500">
           A GPX fájlból kiszámoljuk a távot és a szintemelkedést, és
           megmutatjuk a nyomvonal előnézetét.
         </p>
 
         <div class="mt-3 flex flex-wrap items-center gap-2">
           <label
-            class="flex items-center gap-2 text-xs font-medium text-bark-700"
+            class="flex items-center gap-2 text-xs font-medium text-espresso-700"
           >
             Céldátum (opcionális)
             <input
               v-model="gpxTargetDate"
               type="date"
-              class="rounded border border-clay-200 bg-white px-2 py-1 text-xs text-bark-900 tabular-nums focus:border-moss-600 focus:outline-none focus:ring-1 focus:ring-moss-600"
+              class="rounded border border-blushMid-200 bg-white px-2 py-1 text-xs text-espresso-900 tabular-nums focus:border-moss-600 focus:outline-none focus:ring-1 focus:ring-moss-600"
             />
           </label>
 
@@ -891,7 +891,7 @@ onMounted(async () => {
           -->
           <button
             type="button"
-            class="inline-flex items-center rounded-md bg-moss-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-moss-800 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-moss-300"
+            class="inline-flex items-center rounded-card bg-moss-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-moss-800 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-moss-300"
             :disabled="gpxUploading"
             :aria-busy="gpxUploading ? 'true' : 'false'"
             @click="triggerGpxPicker"
@@ -920,9 +920,9 @@ onMounted(async () => {
         <p
           v-if="gpxLocalError"
           role="alert"
-          class="mt-3 flex items-start gap-2 rounded border border-clay-300 bg-bark-50 px-3 py-2 text-xs text-bark-700"
+          class="mt-3 flex items-start gap-2 rounded border border-blushMid-300 bg-blushLight-50 px-3 py-2 text-xs text-espresso-700"
         >
-          <span aria-hidden="true" class="mt-px text-clay-500">▲</span>
+          <span aria-hidden="true" class="mt-px text-blushMid-500">▲</span>
           <span>{{ gpxLocalError }}</span>
         </p>
       </section>
@@ -975,31 +975,31 @@ onMounted(async () => {
            néző nem owner (nincs invite/remove gomb). -->
       <section
         v-if="user && state.current"
-        class="rounded-lg border border-clay-200 bg-sand-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
+        class="rounded-card border border-blushMid-200 bg-blushLight-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
         aria-label="Résztvevők"
       >
         <header class="flex items-baseline justify-between">
-          <h3 class="text-sm font-semibold tracking-tight text-bark-900">
+          <h3 class="text-sm font-semibold tracking-tight text-espresso-900">
             Résztvevők
           </h3>
-          <span class="text-xs text-loam-500">
+          <span class="text-xs text-umber-500">
             {{ participants.length }} fő
           </span>
         </header>
         <p
           v-if="participants.length === 0"
-          class="mt-2 text-xs text-loam-500"
+          class="mt-2 text-xs text-umber-500"
         >
           Még nincs elfogadott résztvevő ezen a túrán.
         </p>
         <ul
           v-else
-          class="mt-3 divide-y divide-clay-200 rounded border border-clay-200 bg-white"
+          class="mt-3 divide-y divide-blushMid-200 rounded border border-blushMid-200 bg-white"
         >
           <li
             v-for="p in participants"
             :key="p.id"
-            class="flex items-center justify-between gap-2 px-3 py-2 text-xs text-bark-700"
+            class="flex items-center justify-between gap-2 px-3 py-2 text-xs text-espresso-700"
           >
             <span class="truncate font-medium">
               {{ p.email ?? (p.user_id ? p.user_id.slice(0, 8) + '…' : 'ismeretlen') }}
@@ -1012,7 +1012,7 @@ onMounted(async () => {
             </span>
             <span
               v-else
-              class="shrink-0 rounded border border-sand-300 bg-sand-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-bark-900"
+              class="shrink-0 rounded border border-blushLight-300 bg-blushLight-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-espresso-900"
             >
               elfogadva
             </span>
@@ -1026,14 +1026,14 @@ onMounted(async () => {
            metódusokra. -->
       <section
         v-if="myPendingInvite"
-        class="rounded-lg border border-moss-300 bg-moss-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
+        class="rounded-card border border-moss-300 bg-moss-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
         aria-label="Meghívó"
       >
         <header>
-          <h3 class="text-sm font-semibold tracking-tight text-bark-900">
+          <h3 class="text-sm font-semibold tracking-tight text-espresso-900">
             Meghívó érkezett
           </h3>
-          <p class="mt-1 text-xs text-loam-500">
+          <p class="mt-1 text-xs text-umber-500">
             <template v-if="inviterEmailForMyInvite">
               {{ inviterEmailForMyInvite }} meghívott erre a túrára.
             </template>
@@ -1082,18 +1082,18 @@ onMounted(async () => {
            Meghívók panel alá. -->
       <section
         v-if="isTripOwner"
-        class="rounded-lg border border-clay-200 bg-sand-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
+        class="rounded-card border border-blushMid-200 bg-blushLight-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
         aria-label="Barátok meghívása"
       >
         <header class="flex items-baseline justify-between">
-          <h3 class="text-sm font-semibold tracking-tight text-bark-900">
+          <h3 class="text-sm font-semibold tracking-tight text-espresso-900">
             Barátok meghívása
           </h3>
-          <span class="text-xs text-loam-500">
+          <span class="text-xs text-umber-500">
             {{ invites.length }} aktív
           </span>
         </header>
-        <p class="mt-1 text-xs text-loam-500">
+        <p class="mt-1 text-xs text-umber-500">
           Ha a cím regisztrált, automatikusan kap értesítést.
         </p>
 
@@ -1136,42 +1136,42 @@ onMounted(async () => {
            megfelelő badge + Remove gomb. -->
       <section
         v-if="isTripOwner"
-        class="rounded-lg border border-clay-200 bg-sand-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
+        class="rounded-card border border-blushMid-200 bg-blushLight-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
         aria-label="Meghívók"
       >
         <header class="flex items-baseline justify-between">
-          <h3 class="text-sm font-semibold tracking-tight text-bark-900">
+          <h3 class="text-sm font-semibold tracking-tight text-espresso-900">
             Meghívók
           </h3>
-          <span class="text-xs text-loam-500">
+          <span class="text-xs text-umber-500">
             {{ invites.length }} összesen
           </span>
         </header>
 
         <details
-          class="mt-3 rounded border border-clay-200 bg-white"
+          class="mt-3 rounded border border-blushMid-200 bg-white"
           :open="pendingInvites.length > 0"
         >
           <summary
-            class="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-semibold text-bark-900"
+            class="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-semibold text-espresso-900"
           >
             <span>Függőben</span>
-            <span class="rounded border border-clay-300 bg-clay-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-clay-900">
+            <span class="rounded border border-blushMid-300 bg-blushMid-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blushMid-900">
               {{ pendingInvites.length }}
             </span>
           </summary>
           <ul
             v-if="pendingInvites.length > 0"
-            class="divide-y divide-clay-200 border-t border-clay-200"
+            class="divide-y divide-blushMid-200 border-t border-blushMid-200"
           >
             <li
               v-for="inv in pendingInvites"
               :key="inv.id"
-              class="flex items-center justify-between gap-2 px-3 py-2 text-xs text-bark-700"
+              class="flex items-center justify-between gap-2 px-3 py-2 text-xs text-espresso-700"
             >
               <span class="truncate font-medium">{{ inv.invitee_email }}</span>
               <span
-                class="shrink-0 rounded border border-clay-300 bg-clay-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-clay-900"
+                class="shrink-0 rounded border border-blushMid-300 bg-blushMid-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blushMid-900"
               >
                 {{ inviteStatusLabel(inv.status) }}
               </span>
@@ -1186,17 +1186,17 @@ onMounted(async () => {
           </ul>
           <p
             v-else
-            class="border-t border-clay-200 px-3 py-2 text-xs italic text-loam-500"
+            class="border-t border-blushMid-200 px-3 py-2 text-xs italic text-umber-500"
           >
             Nincs függő meghívó.
           </p>
         </details>
 
         <details
-          class="mt-2 rounded border border-clay-200 bg-white"
+          class="mt-2 rounded border border-blushMid-200 bg-white"
         >
           <summary
-            class="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-semibold text-bark-900"
+            class="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-semibold text-espresso-900"
           >
             <span>Elfogadva</span>
             <span class="rounded border border-moss-300 bg-moss-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-moss-900">
@@ -1205,12 +1205,12 @@ onMounted(async () => {
           </summary>
           <ul
             v-if="acceptedInvites.length > 0"
-            class="divide-y divide-clay-200 border-t border-clay-200"
+            class="divide-y divide-blushMid-200 border-t border-blushMid-200"
           >
             <li
               v-for="inv in acceptedInvites"
               :key="inv.id"
-              class="flex items-center justify-between gap-2 px-3 py-2 text-xs text-bark-700"
+              class="flex items-center justify-between gap-2 px-3 py-2 text-xs text-espresso-700"
             >
               <span class="truncate font-medium">{{ inv.invitee_email }}</span>
               <span
@@ -1229,35 +1229,35 @@ onMounted(async () => {
           </ul>
           <p
             v-else
-            class="border-t border-clay-200 px-3 py-2 text-xs italic text-loam-500"
+            class="border-t border-blushMid-200 px-3 py-2 text-xs italic text-umber-500"
           >
             Még senki nem fogadta el.
           </p>
         </details>
 
         <details
-          class="mt-2 rounded border border-clay-200 bg-white"
+          class="mt-2 rounded border border-blushMid-200 bg-white"
         >
           <summary
-            class="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-semibold text-bark-900"
+            class="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-semibold text-espresso-900"
           >
             <span>Elutasítva</span>
-            <span class="rounded border border-sand-300 bg-sand-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-bark-900">
+            <span class="rounded border border-blushLight-300 bg-blushLight-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-espresso-900">
               {{ declinedInvites.length }}
             </span>
           </summary>
           <ul
             v-if="declinedInvites.length > 0"
-            class="divide-y divide-clay-200 border-t border-clay-200"
+            class="divide-y divide-blushMid-200 border-t border-blushMid-200"
           >
             <li
               v-for="inv in declinedInvites"
               :key="inv.id"
-              class="flex items-center justify-between gap-2 px-3 py-2 text-xs text-bark-700"
+              class="flex items-center justify-between gap-2 px-3 py-2 text-xs text-espresso-700"
             >
               <span class="truncate font-medium">{{ inv.invitee_email }}</span>
               <span
-                class="shrink-0 rounded border border-sand-300 bg-sand-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-bark-900"
+                class="shrink-0 rounded border border-blushLight-300 bg-blushLight-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-espresso-900"
               >
                 {{ inviteStatusLabel(inv.status) }}
               </span>
@@ -1272,7 +1272,7 @@ onMounted(async () => {
           </ul>
           <p
             v-else
-            class="border-t border-clay-200 px-3 py-2 text-xs italic text-loam-500"
+            class="border-t border-blushMid-200 px-3 py-2 text-xs italic text-umber-500"
           >
             Senki nem utasította el.
           </p>
@@ -1287,11 +1287,11 @@ onMounted(async () => {
       />
       <section
         v-if="canViewRecap"
-        class="rounded-lg border border-clay-200 bg-sand-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
+        class="rounded-card border border-blushMid-200 bg-blushLight-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
         aria-label="Túra-élménybeszámoló"
       >
         <header class="flex items-baseline justify-between gap-2">
-          <h3 class="text-sm font-semibold tracking-tight text-bark-900">
+          <h3 class="text-sm font-semibold tracking-tight text-espresso-900">
             {{ isOwnerViewer ? 'Túra-élménybeszámoló' : 'Beszámoló' }}
           </h3>
           <span
@@ -1302,14 +1302,14 @@ onMounted(async () => {
           </span>
           <span
             v-else-if="!isOwnerViewer && recap && recap.rating_out_of_10 !== null && recap.rating_out_of_10 !== undefined"
-            class="rounded border border-clay-300 bg-clay-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-clay-900 tabular-nums"
+            class="rounded border border-blushMid-300 bg-blushMid-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blushMid-900 tabular-nums"
           >
             Élmény: {{ recap.rating_out_of_10 }} / 10
           </span>
         </header>
         <p
           v-if="isOwnerViewer"
-          class="mt-1 text-xs italic text-loam-500"
+          class="mt-1 text-xs italic text-umber-500"
         >
           Komfort is számít, nem csak a könnyű súly.
         </p>
@@ -1332,7 +1332,7 @@ onMounted(async () => {
           </label>
 
           <div class="mt-3 flex flex-wrap items-center gap-4">
-            <label class="flex flex-1 min-w-[180px] items-center gap-3 text-xs text-bark-700">
+            <label class="flex flex-1 min-w-[180px] items-center gap-3 text-xs text-espresso-700">
               <span class="whitespace-nowrap font-medium">Élmény (0-10):</span>
               <input
                 v-model.number="recapRating"
@@ -1343,15 +1343,15 @@ onMounted(async () => {
                 class="flex-1 accent-moss-600"
                 aria-label="Túra élmény értékelés 0-10"
               />
-              <span class="w-12 text-right tabular-nums font-semibold text-bark-900">
+              <span class="w-12 text-right tabular-nums font-semibold text-espresso-900">
                 {{ recapRating ?? '–' }} / 10
               </span>
             </label>
-            <label class="flex items-center gap-2 text-xs text-bark-700">
+            <label class="flex items-center gap-2 text-xs text-espresso-700">
               <input
                 v-model="recapPublic"
                 type="checkbox"
-                class="h-4 w-4 rounded border-clay-300 text-moss-700 focus:ring-moss-600"
+                class="h-4 w-4 rounded border-blushMid-300 text-moss-700 focus:ring-moss-600"
               />
               <span>Publikus (barátok is olvashatják)</span>
             </label>
@@ -1360,7 +1360,7 @@ onMounted(async () => {
           <div class="mt-4 flex items-center gap-2">
             <button
               type="button"
-              class="inline-flex items-center rounded-md bg-moss-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-moss-800 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-moss-300"
+              class="inline-flex items-center rounded-card bg-moss-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-moss-800 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-moss-300"
               :disabled="recapSaving"
               @click="saveRecap"
             >
@@ -1388,7 +1388,7 @@ onMounted(async () => {
             <div class="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                class="inline-flex items-center rounded-md bg-moss-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-moss-800 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-moss-300"
+                class="inline-flex items-center rounded-card bg-moss-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-moss-800 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-moss-300"
                 :disabled="photoUploading"
                 @click="triggerPhotoPicker"
               >
@@ -1409,7 +1409,7 @@ onMounted(async () => {
                 aria-label="Túra fotó kiválasztása"
                 @change="onPhotoFileChange"
               />
-              <span class="text-xs text-loam-500">
+              <span class="text-xs text-umber-500">
                 Max 5 MB, JPEG / PNG / WebP
               </span>
             </div>
@@ -1417,15 +1417,15 @@ onMounted(async () => {
             <p
               v-if="photoLocalError"
               role="alert"
-              class="mt-2 flex items-start gap-2 rounded border border-clay-300 bg-bark-50 px-3 py-2 text-xs text-bark-700"
+              class="mt-2 flex items-start gap-2 rounded border border-blushMid-300 bg-blushLight-50 px-3 py-2 text-xs text-espresso-700"
             >
-              <span aria-hidden="true" class="mt-px text-clay-500">▲</span>
+              <span aria-hidden="true" class="mt-px text-blushMid-500">▲</span>
               <span>{{ photoLocalError }}</span>
             </p>
 
             <p
               v-if="photos.length === 0"
-              class="mt-3 text-xs italic text-loam-500"
+              class="mt-3 text-xs italic text-umber-500"
             >
               Még nincs fotó. A beszámoló elkészülhet fotók nélkül is —
               töltsd fel a legszebb pillanatokat, hogy emlékezetes maradjon.
@@ -1438,7 +1438,7 @@ onMounted(async () => {
               <li
                 v-for="(photo, idx) in photos"
                 :key="photo.id"
-                class="overflow-hidden rounded border border-clay-200 bg-white transition-all duration-200 hover:ring-1 hover:ring-moss-500 hover:scale-[1.01] hover:cursor-grab"
+                class="overflow-hidden rounded border border-blushMid-200 bg-white transition-all duration-200 hover:ring-1 hover:ring-moss-500 hover:scale-[1.01] hover:cursor-grab"
                 :class="dragPhotoId === photo.id ? 'ring-2 ring-moss-700 scale-[1.02] cursor-grabbing' : ''"
                 :draggable="true"
                 @dragstart="onDragStart(photo.id)"
@@ -1451,7 +1451,7 @@ onMounted(async () => {
                   vissza egy monogram placeholder-re (két betű a photo id
                   utolsó két hex karakteréből).
                 -->
-                <div class="relative h-48 w-full bg-clay-100">
+                <div class="relative h-48 w-full bg-blushMid-100">
                   <img
                     v-if="photo.public_url"
                     :src="photo.public_url"
@@ -1460,12 +1460,12 @@ onMounted(async () => {
                   />
                   <div
                     v-else
-                    class="flex h-full w-full items-center justify-center text-2xl font-bold text-clay-700"
+                    class="flex h-full w-full items-center justify-center text-2xl font-bold text-blushMid-700"
                   >
                     {{ (photo.id || '').slice(-2).toUpperCase() || 'M' }}
                   </div>
                   <span
-                    class="absolute left-2 top-2 rounded bg-bark-900/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sand-50"
+                    class="absolute left-2 top-2 rounded bg-blushLight-900/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blushLight-50"
                     aria-hidden="true"
                   >
                     #{{ idx + 1 }}
@@ -1480,7 +1480,7 @@ onMounted(async () => {
                     placeholder="Monogram képaláírás…"
                     @input="captionDrafts = { ...captionDrafts, [photo.id]: ($event.target as HTMLInputElement).value }"
                   />
-                  <div class="flex items-center justify-between text-[10px] text-loam-500">
+                  <div class="flex items-center justify-between text-[10px] text-umber-500">
                     <span v-if="captionLength(captionDrafts[photo.id] ?? photo.caption) > 400">
                       {{ captionLength(captionDrafts[photo.id] ?? photo.caption) }} / 500
                     </span>
@@ -1499,7 +1499,7 @@ onMounted(async () => {
                     <span v-else aria-hidden="true">&nbsp;</span>
                     <button
                       type="button"
-                      class="text-xs font-medium text-clay-700 underline"
+                      class="text-xs font-medium text-blushMid-700 underline"
                       @click="handleDeletePhoto(photo.id)"
                     >
                       Törlés
@@ -1508,7 +1508,7 @@ onMounted(async () => {
                 </div>
               </li>
             </ul>
-            <p class="mt-2 text-[11px] text-loam-500">
+            <p class="mt-2 text-[11px] text-umber-500">
               Húzd el a kártyákat az átrendezéshez.
             </p>
           </div>
@@ -1522,13 +1522,13 @@ onMounted(async () => {
         <template v-else>
           <p
             v-if="recap?.body"
-            class="mt-3 whitespace-pre-wrap text-sm text-bark-900"
+            class="mt-3 whitespace-pre-wrap text-sm text-espresso-900"
           >
             {{ recap.body }}
           </p>
           <p
             v-else
-            class="mt-3 text-xs italic text-loam-500"
+            class="mt-3 text-xs italic text-umber-500"
           >
             A beszámoló még nem készült el.
           </p>
@@ -1540,9 +1540,9 @@ onMounted(async () => {
             <li
               v-for="photo in photos"
               :key="photo.id"
-              class="overflow-hidden rounded border border-clay-200 bg-white"
+              class="overflow-hidden rounded border border-blushMid-200 bg-white"
             >
-              <div class="h-48 w-full bg-clay-100">
+              <div class="h-48 w-full bg-blushMid-100">
                 <img
                   v-if="photo.public_url"
                   :src="photo.public_url"
@@ -1551,20 +1551,20 @@ onMounted(async () => {
                 />
                 <div
                   v-else
-                  class="flex h-full w-full items-center justify-center text-2xl font-bold text-clay-700"
+                  class="flex h-full w-full items-center justify-center text-2xl font-bold text-blushMid-700"
                 >
                   {{ (photo.id || '').slice(-2).toUpperCase() || 'M' }}
                 </div>
               </div>
               <p
                 v-if="photo.caption"
-                class="px-2 py-1 text-xs text-bark-700"
+                class="px-2 py-1 text-xs text-espresso-700"
               >
                 {{ photo.caption }}
               </p>
               <p
                 v-else
-                class="px-2 py-1 text-xs italic text-loam-500"
+                class="px-2 py-1 text-xs italic text-umber-500"
               >
                 Monogram fotó
               </p>
