@@ -1,3 +1,4 @@
+// Re-deploy trigger (2026-08-14 19:50): empty cache
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server';
 import type { Database } from '~/types/db';
 import { getUserId } from '~/server/utils/auth';
