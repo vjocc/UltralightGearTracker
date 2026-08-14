@@ -92,3 +92,22 @@
     @apply h-2 w-full bg-moss-500;
   }
 }
+
+/* ---------------------------------------------------------------------
+ * A.10 .gear-list-* — Vue <TransitionGroup> named classes for the gear
+ * list (Sprint 4 Phase 2). Slide-down + fade-in 300ms for new items,
+ * smooth move for re-orders. Source of truth:
+ * docs/sprint-4-phase-2-onboarding.md §9 acceptance criteria #7.
+ * ------------------------------------------------------------------- */
+.gear-list-enter-active,
+.gear-list-leave-active {
+  transition: opacity 300ms ease-out, transform 300ms ease-out;
+}
+.gear-list-enter-from,
+.gear-list-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+.gear-list-move {
+  transition: transform 300ms ease-out;
+}

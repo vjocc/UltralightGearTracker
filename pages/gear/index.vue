@@ -13,6 +13,7 @@
  * form). Delete uses a native confirm() per Architect spec.
  */
 import type { GearItemRow } from '~/types/db';
+import { ONBOARDING_KÜSZÖB } from '~/composables/useOnboardingPhase';
 
 definePageMeta({
   title: 'Gear',
@@ -22,6 +23,13 @@ const { state, list, create, update, remove, resetError } = useGear();
 const { state: catState, list: listCategories } = useCategories();
 const { refresh: refreshBaseWeight } = useBaseWeight();
 const user = useSessionUser();
+
+// Phase 2: show the inline onboarding panel while the user is still in
+// the 0..KÜSZÖB-1 window. The KÜSZÖB const is shared with the panel
+// (composables/useOnboardingPhase.ts) so the two stay in sync.
+const showOnboarding = computed(
+  () => state.value.items.length < ONBOARDING_KÜSZÖB && !!user.value
+);
 
 // Gated by middleware; this is a defensive guard for SSR pre-hydration.
 if (import.meta.client && !user.value) {
@@ -107,6 +115,7 @@ onMounted(async () => {
         </p>
       </div>
       <button
+        v-if="state.items.length > 0"
         type="button"
         class="btn-primary"
         @click="openCreate"
@@ -117,6 +126,11 @@ onMounted(async () => {
 
     <BaseWeightSummary />
 
+    <!-- Phase 2: inline onboarding panel (A/B/C phases). Replaces the
+         former GearEmptyState CTA — GearEmptyState.vue is kept on disk
+         as an orphan for rollback. -->
+    <GearOnboardingPanel v-if="showOnboarding" />
+
     <ErrorBanner
       :message="state.error"
       dismissible
@@ -125,14 +139,12 @@ onMounted(async () => {
 
     <p v-if="state.loading" class="text-sm text-gray-500">Loading…</p>
 
-    <div
-      v-else-if="state.items.length === 0"
-      class="mt-2"
+    <TransitionGroup
+      v-else
+      tag="ul"
+      name="gear-list"
+      class="mt-2 space-y-2"
     >
-      <GearEmptyState @add="openCreate" />
-    </div>
-
-    <ul v-else class="mt-2 space-y-2">
       <li v-for="g in state.items" :key="g.id">
         <GearCard
           :item="g"
@@ -141,7 +153,7 @@ onMounted(async () => {
           @delete="handleDelete"
         />
       </li>
-    </ul>
+    </TransitionGroup>
 
     <GearFormModal
       :open="modalOpen"
