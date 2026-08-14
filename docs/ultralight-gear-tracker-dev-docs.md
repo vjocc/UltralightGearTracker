@@ -145,11 +145,15 @@ A felhasználó időnként **saját maga is szerkeszti a kódot közvetlenül**,
 
 ---
 
-## 8. Nyitott QA debt (auditálandó)
+## 8. Nyitott QA debt (CLOSED — audit 2026-08-14)
 
-- **Wishlist ár-értesítés:** lezárva N/A-ként (scope-out), a refresh dummy smoke-tesztelt csak.
-- **Magic link runtime:** korábban sosem futott le élesben (Supabase config hiba miatt), a jelenlegi jelszavas flow mellett alacsony prioritású újratesztelés.
-- **Trips SSR regression:** korábban csak design-review szinten ellenőrizve (Vercel Deployment Protection blokkolta); élő újratesztelés szükséges a protection feloldása után.
+A Sprint 4 docs audit 4 batch-e (delta-findingek a Trello `debt-tracker` kártyán, `6a7d7b62d61ae7a41e8f83ce`) megerősítette, hogy a korábban nyitottként listázott 3 debt valójában CLOSED. A docs szövege 2026-08-14-ig driftben volt a valósággal.
+
+- ✅ **Wishlist ár-értesítés:** CLOSED. Scope-out (wishlist scope véglegesen kivezetve), a `refreshPrices` dummy-logika 401-gyel védett a `POST /api/wishlist/refresh` no-auth hívásnál. A Trello audit comment `6a7f0afe7b490ccfff099e58` rögzítette.
+- ✅ **Magic link runtime:** CLOSED. A kód password-only (`supabase.auth.signInWithPassword`), magic-link CTA soha nem volt használatban. A korábbi "never ran live" szöveg a docs-ban **drift volt** — a Trello card history 2026-08-13-án lezárta a debt-et. Docs PR-rel javítva: törölve a "never ran live" szöveg.
+- ✅ **Trips SSR regression:** CLOSED. A P3.3 fix (`user.sub` injection) live a deployed app-on, Vercel Deployment Protection OFF, `/trips` no-auth 302→`/signin?next=/trips` redirect-elve. A Trello comment `6a7f0af3543a24acced2e6f7` megerősítette.
+
+**Archiválás**: a 3 debt rendben van, a docs szövege most már a valóságnak megfelel. Jövőbeli debt-ek új kategóriaként (security, performance, data-integrity) kerüljenek be, és legyen a Trello kártyán explicit `next:` marker a domain-director review-hoz.
 
 ---
 
