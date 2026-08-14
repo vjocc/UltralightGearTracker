@@ -26,12 +26,22 @@ export function useCategories() {
     state.value.error = err?.statusMessage ?? err?.message ?? 'Unexpected error';
   };
 
+  // Use Nuxt Supabase client to read global categories (RLS = read-all on Migration #1)
   const list = async () => {
     state.value.loading = true;
     state.value.error = null;
     try {
-      const rows = await $fetch<CategoryRow[]>('/api/categories');
-      state.value.items = rows ?? [];
+      const client = useSupabaseClient();
+      const { data, error } = await client
+        .from('categories')
+        .select('id, slug, name, description, display_order')
+        .order('display_order', { ascending: true });
+      if (error) {
+        setError(error);
+        state.value.items = [];
+      } else {
+        state.value.items = (data ?? []) as CategoryRow[];
+      }
     } catch (e) {
       setError(e);
     } finally {
