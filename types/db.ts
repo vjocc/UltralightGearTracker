@@ -568,9 +568,15 @@ export interface LoadoutRecommendationItem {
 
 export type LoadoutReadiness =
   | 'enough_data'
+  | 'no_data'
   | 'no_trips'
   | 'no_debriefs'
   | 'no_comfort';
+
+/** Minimum number of scored items required to show recommendation lists.
+ * Below this, `meta.readiness = 'no_data'` and the UI shows a CTA instead
+ * of a half-empty list. Default 2. L2 spec-pinned (Phase 7 §2.5). */
+export const MIN_ITEMS_FOR_DISPLAY = 2;
 
 export interface LoadoutRecommendationsResponse {
   trip_id: UUID;

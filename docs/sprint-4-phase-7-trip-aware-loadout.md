@@ -137,23 +137,56 @@ A scoring egyszerű, transzparens, és a user számára is elmagyarázható (a `
 
 A `recommendation_score` DESC szerint rendezzük; top-N=6-ot veszünk (az UI 3 + 3 kártyát mutat).
 
-### 2.5 A "add" vs "keep" szétválogatás
+### 2.5 A "add" vs "keep" szétválogatás — ÁTFEDÉS-MENTES
 
-- **`add_candidates`**: top-6 item, ahol `already_on_trip = false`, és `recommendation_score >= 0.5`. (A küszöb a "ne zajos ajánlás" elv — csak erős ajánlások kerülnek a UI-ba.)
-- **`keep_candidates`**: top-6 item, ahol `already_on_trip = true`, és `recommendation_score >= 0.5`. (A user megerősítést kap: "ez az item korábbi túráidon is bevált, érdemes megtartani a mostani trip-en is".)
+A két lista **SOHA nem fedheti át egymást** (az `already_on_trip` boolean filter biztosítja, plusz a lista-méret szétosztás).
+
+**Lista-méret számítás (kumulatív)**:
+```
+if scored_items_count < MIN_ITEMS_FOR_DISPLAY (default 2):
+    return readiness = 'no_data'  // NEM mutatunk fél-listát / egyetlen kártyát
+
+add_size = min(3, floor(scored_items_count / 2))
+keep_size = min(3, scored_items_count - add_size)
+```
+
+**Példák** (különböző `scored_items_count` értékekre):
+
+| scored_items_count | add_size | keep_size | Megjegyzés |
+|---|---|---|---|
+| 0, 1 | — | — | `no_data` empty state |
+| 2 | 1 | 1 | 1 + 1 (két kártya) |
+| 3 | 1 | 2 | 1 + 2 (a keep a maradék 2) |
+| 4 | 2 | 2 | 2 + 2 (NEM 3 + 3, mert akkor átfedés lenne) |
+| 5 | 2 | 3 | 2 + 3 |
+| 6, 7+, 8+ | 3 | 3 | 3 + 3 (a TOP_N telítve) |
+
+**Filter + rendezés**:
+- **`add_candidates`**: filter `(!r.already_on_trip && r.recommendation_score >= 0.5 && r.reason !== null)`, rendezés `recommendation_score DESC`, slice `(0, add_size)`
+- **`keep_candidates`**: filter `(r.already_on_trip && r.recommendation_score >= 0.5 && r.reason !== null)`, rendezés `recommendation_score DESC`, slice `(0, keep_size)`
+
+**Miért ez a logika fontos**:
+- A `false` + `true` filter garantálja, hogy **egy item NEM kerülhet mindkét listába** (`already_on_trip` boolean)
+- A `(add_size + keep_size) ≤ scored_items_count` biztosítja, hogy **nincs szelet-átfedés** (ha `add_size = min(3, X)`, a `keep_size = min(3, scored_items_count - add_size)` automatikusan kitölti a maradék slot-ot, de NEM nyúl hozzá az `add_size`-hez)
+- Ha `scored_items_count >= 8`, mindkét lista eléri a TOP_N=3 maximumot, és van még `scored_items_count - 6` item, ami kimarad (NEM padding-elve üres placeholder-ekkel)
 
 Ha bármelyik lista üres, a section-body-ban "Nincs új ajánlás" / "Nincs megerősített item" copy jelenik meg (NE üres lista, NE modal).
 
+**SCORE_THRESHOLD = 0.5**, **TOP_N = 3** (mindkét listára), **MIN_ITEMS_FOR_DISPLAY = 2** — ezek a Phase 7 konstansok.
+
 ### 2.6 Empty state readiness
 
-A `meta.readiness` mező 4 értéket vehet fel:
+A `meta.readiness` mező 5 értéket vehet fel (a 4 korábbi + az új `no_data` a §2.5 szerinti `MIN_ITEMS_FOR_DISPLAY` küszöbhöz):
 
 | Readiness | Trigger | UI copy |
 |---|---|---|
-| `enough_data` | `user_trip_count >= 1` ÉS `user_debrief_count >= 1` ÉS `user_comfort_items_count >= 3` | "Ajánlás a te túráid alapján" + a top-6 + top-6 lista |
+| `enough_data` | `user_trip_count >= 1` ÉS `user_debrief_count >= 1` ÉS `user_comfort_items_count >= 3` ÉS `scored_items_count >= MIN_ITEMS_FOR_DISPLAY` (default 2) | "Ajánlás a te túráid alapján" + a top-3 add + top-3 keep (a scored_items_count-tól függően, lásd §2.5) |
+| `no_data` | `scored_items_count < MIN_ITEMS_FOR_DISPLAY` (default 2) | "Még nincs elég pontozott item — komfort-értékelj és túrákat debriefelj, hogy az ajánlás megjelenjen." |
 | `no_trips` | `user_trip_count == 0` | "Még nincs elég adat — rögzíts egy túrát a Debrief kitöltéséhez, hogy személyes ajánlást kapj." |
 | `no_debriefs` | `user_trip_count >= 1` ÉS `user_debrief_count == 0` | "A túráid megvannak, de a Debrief még nincs kitöltve. Töltsd ki bármelyik túrádon a 'Mit bántam meg?' űrlapot, hogy a felesleges itemeket kiszűrhessük." |
 | `no_comfort` | van trip + van debrief ÉS `user_comfort_items_count < 3` | "A túráid és a Debrief megvannak, de a komfort-értékeléseid hiányosak. Értékeld a My Gear listádon legalább 3 itemet a komfort dimenziókban, hogy az ajánlás személyre szóljon." |
+
+**A `computeReadiness` kiegészül egy 5. ággal**: ha az előző 4 feltétel egyike sem teljesül, de `scored_items_count < MIN_ITEMS_FOR_DISPLAY`, akkor `readiness = 'no_data'`. A `MIN_ITEMS_FOR_DISPLAY` alapértelmezetten 2, és a `no_data` a 4 másik readiness NEM-teljesülése UTÁN ellenőrizendő.
 
 A `meta.readiness` az endpoint response része; a frontend nem számítja újra (single source of truth).
 

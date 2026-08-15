@@ -259,9 +259,25 @@ export default defineEventHandler(
     }
 
     // add vs keep szétválogatás — score DESC, threshold >= 0.5,
-    // top-N = 6 (az UI 3 + 3 kártyát mutat).
+    // top-N = 3 (az UI 3 + 3 kártyát mutat, de a scored_items_count-tól
+    // függően átfedés-mentes lépcsős méret — lásd spec §2.5).
     const SCORE_THRESHOLD = 0.5;
-    const TOP_N = 6;
+    const TOP_N = 3;
+    const MIN_ITEMS_FOR_DISPLAY_VAL = 2;
+
+    // Cumulative, overlap-free splitting (Phase 7 §2.5):
+    // add_size = min(3, floor(scored_items_count / 2))
+    // keep_size = min(3, scored_items_count - add_size)
+    // This guarantees add_size + keep_size <= scored_items_count AND
+    // the boolean filter (already_on_trip) ensures no row appears in
+    // both lists. If scored_items_count < MIN_ITEMS_FOR_DISPLAY_VAL, the
+    // readiness becomes 'no_data' and the lists are empty.
+    const scoredItemsCount = allScored.length;
+    const addSize = Math.min(TOP_N, Math.floor(scoredItemsCount / 2));
+    const keepSize = Math.min(
+      TOP_N,
+      scoredItemsCount - addSize,
+    );
 
     const addCandidates = allScored
       .filter(
@@ -271,7 +287,7 @@ export default defineEventHandler(
           r.reason !== null,
       )
       .sort((a, b) => b.recommendation_score - a.recommendation_score)
-      .slice(0, TOP_N);
+      .slice(0, addSize);
 
     const keepCandidates = allScored
       .filter(
@@ -281,13 +297,15 @@ export default defineEventHandler(
           r.reason !== null,
       )
       .sort((a, b) => b.recommendation_score - a.recommendation_score)
-      .slice(0, TOP_N);
+      .slice(0, keepSize);
 
     // Readiness — single source of truth, lásd §2.6.
     const readiness: LoadoutReadiness = computeReadiness({
       userTripCount,
       userDebriefCount,
       comfortItemsCount,
+      scoredItemsCount,
+      minItemsForDisplay: MIN_ITEMS_FOR_DISPLAY_VAL,
     });
 
     return {
@@ -363,10 +381,17 @@ function computeReadiness(args: {
   userTripCount: number;
   userDebriefCount: number;
   comfortItemsCount: number;
+  scoredItemsCount: number;
+  minItemsForDisplay: number;
 }): LoadoutReadiness {
+  // The 4 "data-availability" branches come first; 'no_data' is the
+  // floor — fired last, only when the user has at least the foundations
+  // (trips + debriefs + comfort) but not enough scored items to populate
+  // both add and keep lists (Phase 7 §2.6 + spec §2.5).
   if (args.userTripCount === 0) return 'no_trips';
   if (args.userDebriefCount === 0) return 'no_debriefs';
   if (args.comfortItemsCount < 3) return 'no_comfort';
+  if (args.scoredItemsCount < args.minItemsForDisplay) return 'no_data';
   return 'enough_data';
 }
 
