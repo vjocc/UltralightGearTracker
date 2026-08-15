@@ -61,6 +61,11 @@ const {
   // P5 Debrief
   loadDebrief,
   saveDebrief,
+  // Sprint 5 P0.3 — markTripCompleted a "Túra lezárása" gombhoz (spec §4.2).
+  // A useTrips composable metódus a first_completed_trip activation eventet
+  // is capture-eli (1ced32e commit); itt csak a page-szintű state frissül
+  // a composable update által.
+  markTripCompleted,
   resetError,
 } = useTrips();
 const { state: gearState, list: listGear } = useGear();
@@ -640,6 +645,30 @@ const saveDebriefHandler = async () => {
     debriefLocalError.value = msg;
   } finally {
     debriefSaving.value = false;
+  }
+};
+
+// Sprint 5 P0.3 — "Túra lezárása" gomb handler (spec §4.2 / §7 #8).
+// Owner-only, completed_at === null esetén. A useTrips composable
+// metódus:
+//   1. PATCH-eli a trips.completed_at mezőt,
+//   2. capture-li a 'first_completed_trip' activation eventet (first_* guard),
+//   3. frissíti state.current-et — a page-szintű reaktivitás
+//      (canViewRecap && completed_at gate) automatikusan lecseréli a
+//      "Túra lezárása" gombot a debrief section-re.
+const markTripCompletedBusy = ref(false);
+const markCurrentTripCompleted = async () => {
+  const current = state.value.current;
+  if (!current || markTripCompletedBusy.value) return;
+  markTripCompletedBusy.value = true;
+  try {
+    await markTripCompleted(current.id);
+  } catch {
+    // useTrips a state.error-ba helyezi a hibát — a page-szintű
+    // ErrorBanner jeleníti meg. Nincs lokális feedback a debrief
+    // section-höz hasonlóan: ez egy ritka, egy-gombos akció.
+  } finally {
+    markTripCompletedBusy.value = false;
   }
 };
 
@@ -1725,6 +1754,52 @@ onMounted(async () => {
       </section>
 
       <!--
+        Sprint 5 P0.3 — "Túra lezárása" gomb (spec §4.2 / §7 #8).
+        A loop logikája: Trip → Loadout → Hike → Debrief. A Hike fázist
+        a user a gombra kattintva zárja le; a completed_at kitöltése
+        UTÁN jelenik meg a debrief section (lásd lentebb a gate-et).
+        Gate: isOwnerViewer + !state.value.current.completed_at.
+        A composable metódus (useTrips.markTripCompleted) a PATCH-en felül
+        capture-li a 'first_completed_trip' activation eventet is.
+      -->
+      <div
+        v-if="isOwnerViewer && !state.current?.completed_at"
+        class="mt-4 flex items-center justify-end"
+      >
+        <button
+          type="button"
+          class="btn-secondary px-3 py-2 text-sm"
+          data-testid="mark-trip-completed"
+          :disabled="markTripCompletedBusy"
+          @click="markCurrentTripCompleted"
+        >
+          <AppSpinner
+            v-if="markTripCompletedBusy"
+            class="mr-2 h-4 w-4"
+            aria-hidden="true"
+          />
+          <!-- HeroIcons outline/check-circle — 16×16, 2px stroke, jelenlegi szín -->
+          <svg
+            v-else
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke="currentColor"
+            class="mr-2 inline-block h-4 w-4"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+            />
+          </svg>
+          {{ markTripCompletedBusy ? 'Lezárás…' : 'Túra lezárása' }}
+        </button>
+      </div>
+
+      <!--
         #23 Debrief — Sprint 5 P0.1: a loop záró rituáléja, a 3 kérdés
         (felesleges / hiányzó / kényelmetlen) item-szintű szerkesztéssel.
         P0.1 változások az eredeti Phase 5-ös section-höz képest:
@@ -1751,7 +1826,7 @@ onMounted(async () => {
         oldali betöltéskor hidratálja a lokális piszkozatot.
       -->
       <section
-        v-if="canViewRecap"
+        v-if="canViewRecap && state.current?.completed_at"
         class="debrief-section relative mt-4 overflow-hidden rounded-card border border-espresso-900/30 bg-blushMid-50 p-4 pl-5 shadow-[0_1px_0_rgba(90,69,40,0.04),0_2px_0_rgba(90,69,40,0.06)]"
         data-testid="debrief-section"
         aria-label="Debrief"

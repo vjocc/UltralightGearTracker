@@ -84,12 +84,12 @@ const sortLabel = computed(() =>
       {{ error }}
     </p>
 
-    <!-- Empty state -->
+    <!-- Empty state — MemoFox warm voice (Sprint 5 P0.2 F1, spec §3.5 a) -->
     <p
       v-else-if="isEmpty"
-      class="mt-3 text-sm text-gray-500"
+      class="mt-3 text-sm italic text-umber-500"
     >
-      Még nincs gear item-ed — adj hozzá egyet lent, és a base weight összegzés itt fog megjelenni.
+      Még nincs súlyod — adj hozzá egy cuccot!
     </p>
 
     <!-- Per-category list -->

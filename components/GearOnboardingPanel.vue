@@ -126,33 +126,6 @@ const progressCount = computed(() =>
   Math.min(itemCount.value, ONBOARDING_KÜSZÖB)
 );
 
-// Sprint 5 P0.2 — F2: smart category selector. A felhasználó explicit
-// kérése: a túrafelszerelés-niche-ben a "shelter" (sátor / tarp) a
-// leggyakoribb első item, ezért a kategória-listában előre kiemeljük
-// egy "Ajánlott" címkével. A teljes 13 rendszer-kategória lista
-// (Phase 1) változatlan — csak a megjelenítési sorrend + az első
-// kategória opció kap vizuális emelést. Ha a slug nem található
-// (seed-elt adatbázis nélkül), a prioritás-sorrend csendben elromlik
-// (a default sorrendre esik vissza).
-const PRIORITY_CATEGORY_SLUGS = ['shelter'] as const;
-
-const sortedCategories = computed(() => {
-  const items = [...catState.value.items];
-  const priorityIndex = new Map<string, number>();
-  PRIORITY_CATEGORY_SLUGS.forEach((slug, i) => priorityIndex.set(slug, i));
-  items.sort((a, b) => {
-    const ap = priorityIndex.has(a.slug) ? priorityIndex.get(a.slug)! : Number.MAX_SAFE_INTEGER;
-    const bp = priorityIndex.has(b.slug) ? priorityIndex.get(b.slug)! : Number.MAX_SAFE_INTEGER;
-    if (ap !== bp) return ap - bp;
-    // Fallback: a categories seed display_order szerint rendezve marad.
-    return a.display_order - b.display_order;
-  });
-  return items;
-});
-
-const isPriorityCategory = (slug: string) =>
-  PRIORITY_CATEGORY_SLUGS.includes(slug as (typeof PRIORITY_CATEGORY_SLUGS)[number]);
-
 // Sprint 5 P0.2 — F3 (lásd fentebb): a forcedComplete flag-et a panel
 // életciklusán belül, a deklaráció UTÁN exportáljuk a page-szintű
 // showOnboarding computed számára.
@@ -192,8 +165,12 @@ defineExpose({ forcedComplete });
             Mi van a felszerelésedben?
           </h3>
           <p class="mt-1 font-body text-base text-espresso-900/80">
-            Ha már túráztál, vedd sorra, mi volt nálad — ha még nem, kezdd a
+            Ha már túráztál, vedd sorra, mi volt nálad — ha még nem, kezdj a
             legfontosabbal.
+          </p>
+          <!-- Sprint 5 P0.2 F2 — spec §3.5 b) 3. segéd-sora: -->
+          <p class="text-xs italic text-umber-500 mt-1">
+            Kezdd a legfontosabbal — a többit később is felviheted.
           </p>
 
           <!-- Inline form: 3 fields + plus button on a single row -->
@@ -219,19 +196,13 @@ defineExpose({ forcedComplete });
             >
               <option value="" disabled>Válassz kategóriát</option>
               <option
-                v-for="c in sortedCategories"
+                v-for="c in catState.items"
                 :key="c.id"
                 :value="c.id"
               >
-                {{ c.name }}{{ isPriorityCategory(c.slug) ? ' ★' : '' }}
+                {{ c.name }}
               </option>
             </select>
-            <!-- Sprint 5 P0.2 — F2: a ★ az "Ajánlott" kategória
-                 (shelter túrafelszerelésnél). Halvány, vizuálisan nem
-                 tolakodó, hogy a fő akció (mentés) fókuszban maradjon. -->
-            <p class="basis-full text-[10px] italic text-espresso-900/50">
-              ★ = ajánlott túrafelszerelés-kategória
-            </p>
             <input
               v-model.number="form.weight_g"
               type="number"
