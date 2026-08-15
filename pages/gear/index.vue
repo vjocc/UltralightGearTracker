@@ -118,6 +118,7 @@ onMounted(async () => {
 const publicShare = ref<PublicListRow | null>(null);
 const shareBusy = ref(false);
 const shareCopied = ref(false);
+const shareError = ref<string | null>(null);
 let copyResetTimer: ReturnType<typeof setTimeout> | null = null;
 
 const refreshPublicShare = async () => {
@@ -140,9 +141,19 @@ const publicShareUrl = computed(() => {
   return `${window.location.origin}/list/${token}`;
 });
 
+const clearShareError = () => {
+  shareError.value = null;
+};
+
+// Sprint 4.2 fix #2: surface POST /api/lists failures (zod validation
+// 400s, race conditions, network drops, etc.) to the user inside the
+// share panel. Previously the empty catch{} silently swallowed the
+// error and the button label never updated, leaving the user confused
+// about whether the toggle landed.
 const toggleShare = async () => {
   if (shareBusy.value) return;
   shareBusy.value = true;
+  shareError.value = null;
   try {
     const nextPublic = !(publicShare.value?.is_public ?? false);
     const updated = await $fetch<PublicListRow>('/api/lists', {
@@ -155,10 +166,18 @@ const toggleShare = async () => {
     if (nextPublic && updated.share_token) {
       await copyShareUrl();
     }
-  } catch {
-    // surfaced via state.error on the gear composable OR an ErrorBanner
-    // below — keep this UX minimal for now (Phase 3 spec did not call
-    // for a dedicated share-error banner).
+  } catch (err) {
+    // Log to the console so devs see the zod issue / network drop.
+    console.error('[share] POST /api/lists failed', err);
+    // Surface to the user next to the share button. Nuxt's $fetch
+    // attaches the server message on `err.data` for 4xx responses;
+    // fall back to a generic message for network failures.
+    const fetchErr = err as { data?: { message?: string }; statusMessage?: string; message?: string };
+    shareError.value =
+      fetchErr.data?.message ||
+      fetchErr.statusMessage ||
+      fetchErr.message ||
+      'A megosztás-váltás sikertelen volt. Próbáld újra.';
   } finally {
     shareBusy.value = false;
   }
@@ -214,10 +233,31 @@ const copyShareUrl = async () => {
           :class="publicShare?.is_public ? 'btn-secondary' : 'btn-primary'"
           :disabled="shareBusy"
           :aria-pressed="publicShare?.is_public ?? false"
+          data-testid="public-share-toggle"
           @click="toggleShare"
         >
           {{ publicShare?.is_public ? 'Megosztva ✓' : 'Megosztás' }}
         </button>
+        <!-- Sprint 4.2 fix #2: surface POST /api/lists failures next to
+             the toggle so the user sees why the button label didn't flip.
+             Uses a local ref (not state.error) so it's scoped to share
+             and auto-clears on the next toggle attempt. -->
+        <span
+          v-if="shareError"
+          role="alert"
+          class="text-xs font-medium text-red-600"
+          data-testid="public-share-error"
+        >
+          {{ shareError }}
+          <button
+            type="button"
+            class="ml-1 underline hover:no-underline"
+            aria-label="Share error dismiss"
+            @click="clearShareError"
+          >
+            ✕
+          </button>
+        </span>
         <button
           v-if="state.items.length > 0"
           type="button"
