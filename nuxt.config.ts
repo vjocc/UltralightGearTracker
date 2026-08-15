@@ -62,7 +62,20 @@ export default defineNuxtConfig({
       // forwards to ?next=... (or /gear by default).
       callback: '/auth/callback',
       // These paths never auto-redirect — they own their own UX.
-      exclude: ['/', '/signin', '/signup', '/auth/callback'],
+      exclude: [
+        '/',
+        '/signin',
+        '/signup',
+        '/auth/callback',
+        // Phase 3: /list/{share_token} is the v2 #19 public gear-list
+        // page. It MUST stay accessible to anonymous callers — the
+        // GET /api/lists/[id] endpoint is explicitly service-role
+        // (see server/utils/publicShareClient.ts) because there is no
+        // JWT to forward. The auth-redirect middleware matches
+        // exclude patterns with `^${pattern.replace(/\*/g, ".*")}$`
+        // — `/list/*` therefore matches `/list/{anything}` exactly.
+        '/list/*',
+      ],
       include: ['/gear', '/wishlist', '/trips', '/settings'],
     },
   },

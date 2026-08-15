@@ -430,6 +430,54 @@ export interface TripRecapPhotoUpdate {
 }
 
 /**
+ * Public gear-list share rows (see migration
+ * 20260815000000_gear_list_public_share.sql).
+ *
+ * One row per user (UNIQUE user_id) — the v2 #19 /list/{id} public share.
+ * `share_token` is the opaque UUID that lives in the URL; `is_public` is
+ * the two-key gate's second key (gated again inside the
+ * public_list_lookup helper so a misconfigured policy cannot leak).
+ * `expires_at = NULL` means "never expires"; otherwise the row auto-hides
+ * after that timestamp (the lookup helper enforces it server-side).
+ *
+ * Privacy default: is_public defaults to false on INSERT — explicit opt-in
+ * is required to expose a user's gear to anonymous viewers.
+ */
+export interface PublicListRow {
+  id: UUID;
+  user_id: UUID;
+  share_token: UUID;
+  is_public: boolean;
+  label: string | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PublicListUpsert {
+  is_public: boolean;
+  label?: string | null;
+  expires_at?: string | null;
+}
+
+/**
+ * Return shape of GET /api/lists/[id] for anonymous callers. The owner
+ * fields are intentionally minimal (label + owner_user_id only — no
+ * email, no display_name) — we expose the LIST, not the USER, per v2 §0
+ * 4. elv (public adat-expozíció minimális scope).
+ */
+export interface PublicListResponse {
+  owner_user_id: UUID;
+  label: string | null;
+  gear: Array<{
+    id: UUID;
+    name: string;
+    category_name: string | null;
+    weight_g: number;
+  }>;
+}
+
+/**
  * Database shape consumed by @nuxtjs/supabase's typed client.
  *
  * Implementation note — `GenericTable` compatibility:
@@ -517,6 +565,7 @@ export interface Database {
       trip_share_invites: TableShape<TripShareInviteRow>;
       trip_comments: TableShape<TripCommentRow>;
       trip_recaps: TableShape<TripRecapRow>;
+      public_lists: TableShape<PublicListRow>;
       trip_recap_photos: TableShape<TripRecapPhotoRow>;
     };
     Views: {
@@ -528,8 +577,19 @@ export interface Database {
      * intentionally empty — the typed client does not need the return
      * shape, and surfacing only the existence is enough to avoid
      * `Property 'rpc' does not exist` at the call site.
+     *
+     * Phase 3 exception: `public_list_lookup` IS typed here so the
+     * /api/lists/[id] endpoint can call it with a strongly-typed
+     * argument under vue-tsc strict mode. Adding more typed RPCs in
+     * later phases is fine — this is the canonical place to declare
+     * them.
      */
-    Functions: Record<string, never>;
+    Functions: {
+      public_list_lookup: {
+        Args: { p_share_token: string };
+        Returns: Array<{ owner_user_id: string }>;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
