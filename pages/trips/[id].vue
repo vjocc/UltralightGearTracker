@@ -546,6 +546,15 @@ const debriefUncomfortable = ref<string[]>([]);
 const debriefSaving = ref(false);
 const debriefInitialized = ref(false);
 
+// Sprint 5 P0.1 — inline save feedback (Sprint 4.2 #3 komfort-minta).
+// `debriefSavedRecently` 2mp-ig true a sikeres save után, a "✓ Mentve"
+// feliratot a save gomb mellett jeleníti meg. `debriefLocalError` a section
+// fölötti lokális piros szöveg, ha a save dob (a page-szintű ErrorBanner
+// helyett — a user ne veszítse el a kontextust, ha más section-ön dolgozik).
+const debriefSavedRecently = ref(false);
+const debriefLocalError = ref<string | null>(null);
+let debriefSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
 const debrief = computed(
   () => state.value.debriefByTripId[tripId.value] ?? null,
 );
@@ -596,6 +605,12 @@ const compactDebrief = (arr: string[]): string[] =>
 
 const saveDebriefHandler = async () => {
   debriefSaving.value = true;
+  debriefSavedRecently.value = false;
+  debriefLocalError.value = null;
+  if (debriefSaveTimer) {
+    clearTimeout(debriefSaveTimer);
+    debriefSaveTimer = null;
+  }
   try {
     await saveDebrief(tripId.value, {
       excess_items: compactDebrief(debriefExcess.value),
@@ -603,8 +618,26 @@ const saveDebriefHandler = async () => {
       uncomfortable_items: compactDebrief(debriefUncomfortable.value),
     });
     debriefInitialized.value = true;
-  } catch {
-    // surfaced via state.error
+    debriefSavedRecently.value = true;
+    // Auto-clear a checkmark 2mp múlva (Sprint 4.2 #3 komfort-minta,
+    // 1.5s helyett 2s — a debrief ritkább trigger, a usernek több ideje
+    // van észrevenni).
+    debriefSaveTimer = setTimeout(() => {
+      debriefSavedRecently.value = false;
+      debriefSaveTimer = null;
+    }, 2000);
+  } catch (e) {
+    // Lokális piros szöveg a section-höz (a page-szintű ErrorBanner
+    // helyett, hogy a user ne veszítse el a kontextust, ha közben
+    // más section-ön dolgozik). A state.error-ba is bekerül a useTrips
+    // saveDebrief-en keresztül, de a section-lokális feedback az elsőd-
+    // leges a P0.1 UX-fix szempontjából.
+    const msg =
+      (e as { data?: { statusMessage?: string }; message?: string })
+        ?.data?.statusMessage ||
+      (e as { message?: string })?.message ||
+      'A debrief mentése sikertelen. Próbáld újra.';
+    debriefLocalError.value = msg;
   } finally {
     debriefSaving.value = false;
   }
@@ -1404,7 +1437,8 @@ onMounted(async () => {
       />
       <section
         v-if="canViewRecap"
-        class="rounded-card border border-blushMid-200 bg-blushLight-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
+        class="recap-section rounded-card border border-blushMid-200 bg-blushLight-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
+        data-testid="recap-section"
         aria-label="Túra-élménybeszámoló"
       >
         <header class="flex items-baseline justify-between gap-2">
@@ -1691,18 +1725,76 @@ onMounted(async () => {
       </section>
 
       <!--
-        #23 Debrief — owner-only szerkeszthető 3-kérdéses szöveges panel
-        (Mi volt felesleges? / Mi hiányzott? / Mi volt kényelmetlen?).
+        #23 Debrief — Sprint 5 P0.1: a loop záró rituáléja, a 3 kérdés
+        (felesleges / hiányzó / kényelmetlen) item-szintű szerkesztéssel.
+        P0.1 változások az eredeti Phase 5-ös section-höz képest:
+          (a) a section vizuálisan kiemelt (4px-es bal oldali brand-500
+              sáv + sötétebb keret, a "kontraszt-blokk" a lapon) — a
+              MemoFox design rendszer §2.3 sötét espresso-kártyák
+              mintájára.
+          (b) a gate `canViewRecap` (a recap section-t követően, a
+              loadout-recs ELŐTT) — a szerkesztő UI (`isOwnerViewer`)
+              továbbra is owner-only marad.
+          (c) "Zárd le a túrát — 3 kérdés, 1 perc" alcím + kis ikon
+              (MemoFox `icon-accent text-ember-500`), hogy a vizuális
+              hierarchiában ez legyen a fókusz.
+          (d) 1-soros `<input type="text" maxlength="120">` mezők (a
+              textarea → input csere a Phase 5 §4.5 döntést a P0.1
+              felülírja, mert a Phase 7 #22 loadout-recs item-szinten
+              aggregálja az `excess_items`-t).
+          (e) inline save feedback (Sprint 4.2 #3 komfort-minta):
+              `data-testid="debrief-saved"` "✓ Mentve" 2mp-ig, és
+              `data-testid="debrief-error"` lokális piros szöveg hiba
+              esetén.
         A rekordok külön ref-ekben (`debriefExcess/Missing/Uncomfortable`),
-        így a v-model közvetlenül a ref-re köt, és a watch a szerver-oldali
-        betöltéskor hidratálja a lokális piszkozatot.
+        így a v-model közvetlenül a ref-re köt, és a watch a szerver-
+        oldali betöltéskor hidratálja a lokális piszkozatot.
       -->
       <section
-        v-if="isOwnerViewer"
-        class="debrief-section mt-4 rounded-card border border-blushMid-200 bg-blushLight-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
+        v-if="canViewRecap"
+        class="debrief-section relative mt-4 overflow-hidden rounded-card border border-espresso-900/30 bg-blushMid-50 p-4 pl-5 shadow-[0_1px_0_rgba(90,69,40,0.04),0_2px_0_rgba(90,69,40,0.06)]"
         data-testid="debrief-section"
         aria-label="Debrief"
       >
+        <!--
+          P0.1 (a) — 4px-es bal oldali brand-500 sáv, abszolút pozicionálva
+          a section teljes magasságában (a "kiemelt card" vizuális mintája).
+        -->
+        <span
+          aria-hidden="true"
+          class="absolute inset-y-0 left-0 w-1 bg-brand-500"
+        ></span>
+
+        <!--
+          P0.1 (c) — loop-lezáró "Zárd le a túrát" sor + kis ikon. A
+          vizuális hierarchiában ez legyen a fókusz, hogy a user
+          megtalálja a debriefet a History felé vezető loop utolsó
+          lépéseként.
+        -->
+        <div class="mb-2 flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            class="icon-accent h-5 w-5 flex-shrink-0 text-ember-500"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+              />
+            </svg>
+          </span>
+          <p class="text-xs font-semibold text-espresso-900">
+            Zárd le a túrát — 3 kérdés, 1 perc
+          </p>
+        </div>
+
         <header class="mb-3">
           <h3 class="text-sm font-semibold tracking-tight text-espresso-900">
             Debrief
@@ -1712,129 +1804,179 @@ onMounted(async () => {
           </p>
         </header>
 
-        <div class="debrief-field mb-4">
-          <label class="mb-2 block text-xs font-bold text-espresso-900">
-            Mi volt felesleges?
-          </label>
-          <div
-            v-for="(_, idx) in debriefExcess"
-            :key="`excess-${idx}`"
-            class="debrief-row mb-2 flex items-center gap-2"
-          >
-            <input
-              v-model="debriefExcess[idx]"
-              type="text"
-              maxlength="120"
-              class="input flex-1"
-              :placeholder="`pl. extra sátorfácskendő`"
-            />
+        <!--
+          P0.1 (e) — lokális hibaüzenet a section-höz (a page-szintű
+          ErrorBanner helyett, hogy a user ne veszítse el a kontextust,
+          ha közben más section-ön dolgozik).
+        -->
+        <p
+          v-if="debriefLocalError"
+          data-testid="debrief-error"
+          role="alert"
+          class="mb-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700"
+        >
+          {{ debriefLocalError }}
+        </p>
+
+        <div v-if="isOwnerViewer" class="debrief-fields">
+          <div class="debrief-field mb-4">
+            <label class="mb-2 block text-xs font-bold text-espresso-900">
+              Mi volt felesleges?
+            </label>
+            <div
+              v-for="(_, idx) in debriefExcess"
+              :key="`excess-${idx}`"
+              class="debrief-row mb-2 flex items-center gap-2"
+            >
+              <input
+                v-model="debriefExcess[idx]"
+                type="text"
+                maxlength="120"
+                class="input flex-1"
+                placeholder="pl. extra kulacs, sosem használt bicska"
+                :aria-label="`Felesleges elem ${idx + 1}`"
+              />
+              <button
+                type="button"
+                class="btn-secondary px-2 py-1 text-xs"
+                :aria-label="`Felesleges elem ${idx + 1} törlése`"
+                @click="removeDebriefRow('excess', idx)"
+              >
+                Törlés
+              </button>
+            </div>
             <button
               type="button"
               class="btn-secondary px-2 py-1 text-xs"
-              :aria-label="`Felesleges elem ${idx + 1} törlése`"
-              @click="removeDebriefRow('excess', idx)"
+              aria-label="Új felesleges elem hozzáadása"
+              @click="addDebriefRow('excess')"
             >
-              Törlés
+              + Adj hozzá újabb sort
             </button>
           </div>
-          <button
-            type="button"
-            class="btn-secondary px-2 py-1 text-xs"
-            aria-label="Új felesleges elem hozzáadása"
-            @click="addDebriefRow('excess')"
-          >
-            + Adj hozzá újabb sort
-          </button>
-        </div>
 
-        <div class="debrief-field mb-4">
-          <label class="mb-2 block text-xs font-bold text-espresso-900">
-            Mi hiányzott?
-          </label>
-          <div
-            v-for="(_, idx) in debriefMissing"
-            :key="`missing-${idx}`"
-            class="debrief-row mb-2 flex items-center gap-2"
-          >
-            <input
-              v-model="debriefMissing[idx]"
-              type="text"
-              maxlength="120"
-              class="input flex-1"
-              :placeholder="`pl. vízálló kesztyű`"
-            />
+          <div class="debrief-field mb-4">
+            <label class="mb-2 block text-xs font-bold text-espresso-900">
+              Mi hiányzott?
+            </label>
+            <div
+              v-for="(_, idx) in debriefMissing"
+              :key="`missing-${idx}`"
+              class="debrief-row mb-2 flex items-center gap-2"
+            >
+              <input
+                v-model="debriefMissing[idx]"
+                type="text"
+                maxlength="120"
+                class="input flex-1"
+                placeholder="pl. jobb fejlámpa, plusz réteg"
+                :aria-label="`Hiányzó elem ${idx + 1}`"
+              />
+              <button
+                type="button"
+                class="btn-secondary px-2 py-1 text-xs"
+                :aria-label="`Hiányzó elem ${idx + 1} törlése`"
+                @click="removeDebriefRow('missing', idx)"
+              >
+                Törlés
+              </button>
+            </div>
             <button
               type="button"
               class="btn-secondary px-2 py-1 text-xs"
-              :aria-label="`Hiányzó elem ${idx + 1} törlése`"
-              @click="removeDebriefRow('missing', idx)"
+              aria-label="Új hiányzó elem hozzáadása"
+              @click="addDebriefRow('missing')"
             >
-              Törlés
+              + Adj hozzá újabb sort
             </button>
           </div>
-          <button
-            type="button"
-            class="btn-secondary px-2 py-1 text-xs"
-            aria-label="Új hiányzó elem hozzáadása"
-            @click="addDebriefRow('missing')"
-          >
-            + Adj hozzá újabb sort
-          </button>
-        </div>
 
-        <div class="debrief-field mb-4">
-          <label class="mb-2 block text-xs font-bold text-espresso-900">
-            Mi volt kényelmetlen?
-          </label>
-          <div
-            v-for="(_, idx) in debriefUncomfortable"
-            :key="`uncomfortable-${idx}`"
-            class="debrief-row mb-2 flex items-center gap-2"
-          >
-            <input
-              v-model="debriefUncomfortable[idx]"
-              type="text"
-              maxlength="120"
-              class="input flex-1"
-              :placeholder="`pl. a hálózsák túl szűk volt`"
-            />
+          <div class="debrief-field mb-4">
+            <label class="mb-2 block text-xs font-bold text-espresso-900">
+              Mi volt kényelmetlen?
+            </label>
+            <div
+              v-for="(_, idx) in debriefUncomfortable"
+              :key="`uncomfortable-${idx}`"
+              class="debrief-row mb-2 flex items-center gap-2"
+            >
+              <input
+                v-model="debriefUncomfortable[idx]"
+                type="text"
+                maxlength="120"
+                class="input flex-1"
+                placeholder="pl. matrac túl kemény, hálózsák túl szűk"
+                :aria-label="`Kényelmetlen elem ${idx + 1}`"
+              />
+              <button
+                type="button"
+                class="btn-secondary px-2 py-1 text-xs"
+                :aria-label="`Kényelmetlen elem ${idx + 1} törlése`"
+                @click="removeDebriefRow('uncomfortable', idx)"
+              >
+                Törlés
+              </button>
+            </div>
             <button
               type="button"
               class="btn-secondary px-2 py-1 text-xs"
-              :aria-label="`Kényelmetlen elem ${idx + 1} törlése`"
-              @click="removeDebriefRow('uncomfortable', idx)"
+              aria-label="Új kényelmetlen elem hozzáadása"
+              @click="addDebriefRow('uncomfortable')"
             >
-              Törlés
+              + Adj hozzá újabb sort
             </button>
           </div>
-          <button
-            type="button"
-            class="btn-secondary px-2 py-1 text-xs"
-            aria-label="Új kényelmetlen elem hozzáadása"
-            @click="addDebriefRow('uncomfortable')"
-          >
-            + Adj hozzá újabb sort
-          </button>
-        </div>
 
-        <div class="mt-3 flex items-center gap-2">
-          <button
-            type="button"
-            class="inline-flex items-center rounded-card bg-moss-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-moss-800 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-moss-300"
-            data-testid="debrief-save"
-            :disabled="debriefSaving"
-            @click="saveDebriefHandler"
-          >
-            <AppSpinner
-              v-if="debriefSaving"
-              class="mr-2"
-              size="sm"
-              color="bark"
-              label="Mentés folyamatban"
-            />
-            {{ debriefSaving ? 'Mentés...' : 'Debrief mentése' }}
-          </button>
+          <div class="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              class="inline-flex items-center rounded-card bg-moss-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-moss-800 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-moss-300"
+              data-testid="debrief-save"
+              :disabled="debriefSaving"
+              @click="saveDebriefHandler"
+            >
+              <AppSpinner
+                v-if="debriefSaving"
+                class="mr-2"
+                size="sm"
+                color="bark"
+                label="Mentés folyamatban"
+              />
+              {{ debriefSaving ? 'Mentés...' : 'Debrief mentése' }}
+            </button>
+            <!--
+              P0.1 (e) — "✓ Mentve" inline checkmark a save gomb mellett.
+              `role="status"` + `aria-live="polite"` hogy a screen reader
+              kimondja a sikeres mentést anélkül, hogy a fókuszt elviné.
+              Sprint 4.2 #3 komfort-minta.
+            -->
+            <span
+              v-if="debriefSavedRecently"
+              data-testid="debrief-saved"
+              role="status"
+              aria-live="polite"
+              class="inline-flex items-center text-xs font-semibold text-green-600"
+            >
+              <span aria-hidden="true" class="mr-1">✓</span>
+              Mentve
+            </span>
+          </div>
         </div>
+        <!--
+          Non-owner olvasó: a recap section read-only preview mintájára
+          a debrief section is megjelenik a `canViewRecap` gate-en
+          belül, DE a szerkesztő UI (isOwnerViewer) nincs. Jelenleg
+          a debrief kizárólag owner-only adat (a `trip_debriefs` RLS
+          is owner-only), tehát non-owner számára üres a section —
+          a későbbi Sprint 5 P1+ kiterjesztheti a "baráti beszámoló"
+          mintára, ha a user jelzi.
+        -->
+        <p
+          v-else
+          class="debrief-readonly text-xs italic text-umber-500"
+        >
+          A debrief csak a túra tulajdonosa számára szerkeszthető.
+        </p>
       </section>
 
       <!--
