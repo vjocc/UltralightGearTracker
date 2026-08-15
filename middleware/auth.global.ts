@@ -16,7 +16,8 @@ export default defineNuxtRouteMiddleware((to) => {
     to.path.startsWith('/wishlist') ||
     to.path.startsWith('/trips') ||
     to.path.startsWith('/friends') ||
-    to.path.startsWith('/settings');
+    to.path.startsWith('/settings') ||
+    to.path.startsWith('/stats');   // P6 / v2 #24
 
   if (isProtected && !user.value) {
     return navigateTo(`/signin?next=${encodeURIComponent(to.fullPath)}`);

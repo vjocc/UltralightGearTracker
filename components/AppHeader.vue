@@ -101,6 +101,12 @@ const handleSignOut = async () => {
           >
             Friends
           </NuxtLink>
+          <NuxtLink
+            to="/stats"
+            class="rounded px-2 py-1 font-medium text-gray-700 hover:bg-gray-100"
+          >
+            Stats
+          </NuxtLink>
 
           <!-- Bejövő meghívók badge: pending invites where the caller
                is the invitee. Click → first pending invite's trip. -->

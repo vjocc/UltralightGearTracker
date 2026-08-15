@@ -590,6 +590,59 @@ export interface TripWeightRow {
   item_count: number;
 }
 
+/**
+ * P6 / v2 #24 — Trip statisztika VIEW sor. A `trip_stats` VIEW
+ * (security_invoker = true) per-user aggregációt ad: 1 sor / user,
+ * a trips.user_id = auth.uid() és a gear_items.user_id = auth.uid()
+ * RLS öröklődik — owner-only read automatikus.
+ *
+ * A `base_weight_trend` JSONB time-series:
+ *   {
+ *     "trips":      [{ trip_id, date, total_grams }, ...]   // ASC by date
+ *     "avg_grams":  number,
+ *     "min_grams":  number,
+ *     "max_grams":  number,
+ *     "first_date": "YYYY-MM-DD" | null,
+ *     "last_date":  "YYYY-MM-DD" | null
+ *   }
+ *
+ * A 0 trip-es user 1 sort kap: minden numeric mező 0, az
+ * avg_comfort_* mezők NULL. A frontend "Még nincs elég adat"
+ * üzenettel reagál (v2 §0 #1 szigorúan).
+ *
+ * Phase 7 #22 (trip-aware loadout üzenet) és Phase 8+ csv-export
+ * erre a view-ra épül. Forward-only.
+ */
+export interface TripStatsTrendPoint {
+  trip_id: string;
+  date: string;       // YYYY-MM-DD
+  total_grams: number;
+}
+
+export interface TripStatsTrend {
+  trips: TripStatsTrendPoint[];
+  avg_grams: number;
+  min_grams: number;
+  max_grams: number;
+  first_date: string | null;
+  last_date: string | null;
+}
+
+export interface TripStatsRow {
+  user_id: UUID;
+  trip_count: number;
+  total_km: number;
+  base_weight_trend: TripStatsTrend;
+  debrief_count: number;
+  total_excess_items: number;
+  total_missing_items: number;
+  total_uncomfortable_items: number;
+  avg_comfort_sleep: number | null;
+  avg_comfort_cold: number | null;
+  avg_comfort_weight: number | null;
+  comfort_items_count: number;
+}
+
 type ViewShape<Row> = {
   Row: Row & Record<string, unknown>;
   Relationships: EmptyRelationships;
@@ -616,6 +669,7 @@ export interface Database {
     Views: {
       gear_base_weights_view: ViewShape<GearBaseWeightRow>;
       trip_weight_summary: ViewShape<TripWeightRow>;
+      trip_stats: ViewShape<TripStatsRow>;
     };
     /**
      * SECURITY DEFINER RPC names exported from migrations. The shape is
