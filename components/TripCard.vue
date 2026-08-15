@@ -6,14 +6,21 @@
  * supplies the number — we don't embed a nested select on the list page
  * to keep the GET /api/trips response small), and Edit/Delete buttons.
  *
- * Parent pages own the modal state + delete confirmation. Card emits
- * the row up so the page can drive the useTrips() mutations.
+ * SECURITY (Sprint 4.2 / P4 audit round): the Edit / Delete buttons are
+ * owner-only. The parent page supplies `isOwnerViewer`; we refuse to
+ * render the controls when the caller isn't the trip owner. This is a
+ * defense-in-depth layer on top of the trips RLS policies
+ * (`trips_update_own` + `trips_delete_own` are already strict owner-only
+ * at the SQL level — but the UI must not invite the friend to click on
+ * non-functional buttons that 404 in the background). See docs §P4.2
+ * backend fix for the matching 403 semantic.
  */
 import type { TripRow } from '~/types/db';
 
 const props = defineProps<{
   trip: TripRow;
   gearCount?: number;
+  isOwnerViewer: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -63,6 +70,7 @@ const dateLabel = computed(() => {
         Open
       </button>
       <button
+        v-if="isOwnerViewer"
         type="button"
         class="btn-secondary px-2 py-1 text-xs"
         @click="emit('edit', trip)"
@@ -70,6 +78,7 @@ const dateLabel = computed(() => {
         Edit
       </button>
       <button
+        v-if="isOwnerViewer"
         type="button"
         class="btn-danger px-2 py-1 text-xs"
         @click="emit('delete', trip)"

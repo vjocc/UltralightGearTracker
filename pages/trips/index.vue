@@ -132,6 +132,7 @@ onMounted(async () => {
       <li v-for="t in state.items" :key="t.id">
         <TripCard
           :trip="t"
+          :is-owner-viewer="t.user_id === user?.id"
           @open="openTrip"
           @edit="openEdit"
           @delete="handleDelete"
