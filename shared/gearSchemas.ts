@@ -16,6 +16,22 @@
  */
 import { z } from 'zod';
 
+/**
+ * P5 / v2 #21 — gear comfort rating. 3 subjektív dimenzió (sleep / cold /
+ * weight), 1..5 integer. Mindegyik opcionális; a user bármelyiket (vagy
+ * akár az összeset) kihagyhatja. A `.strict()` megakadadályozza, hogy a
+ * user ismeretlen kulcsot küldjön (illeszkedik a `gear_items` CHECK
+ * constraint-jához — lásd
+ * `supabase/migrations/20260816000000_gear_comfort_rating.sql`).
+ */
+export const gearComfortSchema = z
+  .object({
+    sleep: z.number().int().min(1).max(5).optional(),
+    cold: z.number().int().min(1).max(5).optional(),
+    weight: z.number().int().min(1).max(5).optional(),
+  })
+  .strict();
+
 export const gearCreateSchema = z.object({
   name: z.string().min(1, 'Name is required').max(80, 'Max 80 characters'),
   category_id: z.string().uuid('Pick a category'),
@@ -31,12 +47,14 @@ export const gearCreateSchema = z.object({
     .nullable()
     .optional(),
   excluded_from_base: z.boolean().optional().default(false),
+  comfort: gearComfortSchema.nullable().optional(),
 });
 
 export const gearUpdateSchema = gearCreateSchema.partial();
 
 export type GearCreateInput = z.infer<typeof gearCreateSchema>;
 export type GearUpdateInput = z.infer<typeof gearUpdateSchema>;
+export type GearComfortInput = z.infer<typeof gearComfortSchema>;
 
 /**
  * Form-shape used by GearFormModal.vue. The form always works with

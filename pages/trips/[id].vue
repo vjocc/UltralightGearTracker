@@ -58,6 +58,9 @@ const {
   reorderPhoto,
   updatePhotoCaption,
   deletePhoto,
+  // P5 Debrief
+  loadDebrief,
+  saveDebrief,
   resetError,
 } = useTrips();
 const { state: gearState, list: listGear } = useGear();
@@ -500,6 +503,81 @@ const handleDeleteRecap = async () => {
   }
 };
 
+// --- Trip debrief (P5 / v2 #23 "Mit bántam meg?") -------------------------
+// A 3 text[] mezőhöz 1-1 lokális reaktív tömb, plusz egy "saving" flag.
+// A szerver-oldali validáció a `debriefUpsertSchema` (max 50 item / mező,
+// max 120 char / item). Az owner-only POST endpoint fogadja az üres
+// tömböket is (default `[]` a séma oldalon).
+const debriefExcess = ref<string[]>([]);
+const debriefMissing = ref<string[]>([]);
+const debriefUncomfortable = ref<string[]>([]);
+const debriefSaving = ref(false);
+const debriefInitialized = ref(false);
+
+const debrief = computed(
+  () => state.value.debriefByTripId[tripId.value] ?? null,
+);
+
+// Első mount: hydráld a lokális ref-eket a szerverről jött sorból, ha van.
+// A `debriefInitialized` flag megakadályozza, hogy a watch újra és újra
+// felülírja a user lokális piszkozatát (pl. save közben jött refetch).
+watch(
+  debrief,
+  (d) => {
+    if (debriefInitialized.value) return;
+    if (!d) return;
+    debriefExcess.value = [...(d.excess_items ?? [])];
+    debriefMissing.value = [...(d.missing_items ?? [])];
+    debriefUncomfortable.value = [...(d.uncomfortable_items ?? [])];
+    debriefInitialized.value = true;
+  },
+  { immediate: true },
+);
+
+const addDebriefRow = (
+  which: 'excess' | 'missing' | 'uncomfortable',
+) => {
+  if (which === 'excess') debriefExcess.value = [...debriefExcess.value, ''];
+  if (which === 'missing') debriefMissing.value = [...debriefMissing.value, ''];
+  if (which === 'uncomfortable')
+    debriefUncomfortable.value = [...debriefUncomfortable.value, ''];
+};
+
+const removeDebriefRow = (
+  which: 'excess' | 'missing' | 'uncomfortable',
+  idx: number,
+) => {
+  if (which === 'excess')
+    debriefExcess.value = debriefExcess.value.filter((_, i) => i !== idx);
+  if (which === 'missing')
+    debriefMissing.value = debriefMissing.value.filter((_, i) => i !== idx);
+  if (which === 'uncomfortable')
+    debriefUncomfortable.value = debriefUncomfortable.value.filter(
+      (_, i) => i !== idx,
+    );
+};
+
+// Strip empty / whitespace-only lines before sending — the schema accepts
+// them but they pollute the DB. Defensive coerce keeps the array dense.
+const compactDebrief = (arr: string[]): string[] =>
+  arr.map((s) => s.trim()).filter((s) => s.length > 0);
+
+const saveDebriefHandler = async () => {
+  debriefSaving.value = true;
+  try {
+    await saveDebrief(tripId.value, {
+      excess_items: compactDebrief(debriefExcess.value),
+      missing_items: compactDebrief(debriefMissing.value),
+      uncomfortable_items: compactDebrief(debriefUncomfortable.value),
+    });
+    debriefInitialized.value = true;
+  } catch {
+    // surfaced via state.error
+  } finally {
+    debriefSaving.value = false;
+  }
+};
+
 const triggerPhotoPicker = () => {
   if (photoUploading.value) return;
   photoLocalError.value = null;
@@ -680,6 +758,9 @@ onMounted(async () => {
     // The endpoint returns `{recap: null, photos: []}` if no row exists
     // yet, which we tolerate silently.
     getRecap(tripId.value).catch(() => undefined),
+    // P5 Debrief — same pattern; `loadDebrief` returns null when no row
+    // exists yet, which we tolerate silently.
+    loadDebrief(tripId.value).catch(() => undefined),
   ]);
 });
 </script>
@@ -1571,6 +1652,153 @@ onMounted(async () => {
             </li>
           </ul>
         </template>
+      </section>
+
+      <!--
+        #23 Debrief — owner-only szerkeszthető 3-kérdéses szöveges panel
+        (Mi volt felesleges? / Mi hiányzott? / Mi volt kényelmetlen?).
+        A rekordok külön ref-ekben (`debriefExcess/Missing/Uncomfortable`),
+        így a v-model közvetlenül a ref-re köt, és a watch a szerver-oldali
+        betöltéskor hidratálja a lokális piszkozatot.
+      -->
+      <section
+        v-if="isOwnerViewer"
+        class="debrief-section mt-4 rounded-card border border-blushMid-200 bg-blushLight-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
+        data-testid="debrief-section"
+        aria-label="Debrief"
+      >
+        <header class="mb-3">
+          <h3 class="text-sm font-semibold tracking-tight text-espresso-900">
+            Debrief
+          </h3>
+          <p class="mt-1 text-xs italic text-umber-500">
+            Milyen tapasztalataid voltak a túráról? (Opcionális)
+          </p>
+        </header>
+
+        <div class="debrief-field mb-4">
+          <label class="mb-2 block text-xs font-bold text-espresso-900">
+            Mi volt felesleges?
+          </label>
+          <div
+            v-for="(_, idx) in debriefExcess"
+            :key="`excess-${idx}`"
+            class="debrief-row mb-2 flex items-center gap-2"
+          >
+            <input
+              v-model="debriefExcess[idx]"
+              type="text"
+              maxlength="120"
+              class="input flex-1"
+              :placeholder="`pl. extra sátorfácskendő`"
+            />
+            <button
+              type="button"
+              class="btn-secondary px-2 py-1 text-xs"
+              :aria-label="`Felesleges elem ${idx + 1} törlése`"
+              @click="removeDebriefRow('excess', idx)"
+            >
+              Törlés
+            </button>
+          </div>
+          <button
+            type="button"
+            class="btn-secondary px-2 py-1 text-xs"
+            aria-label="Új felesleges elem hozzáadása"
+            @click="addDebriefRow('excess')"
+          >
+            + Adj hozzá újabb sort
+          </button>
+        </div>
+
+        <div class="debrief-field mb-4">
+          <label class="mb-2 block text-xs font-bold text-espresso-900">
+            Mi hiányzott?
+          </label>
+          <div
+            v-for="(_, idx) in debriefMissing"
+            :key="`missing-${idx}`"
+            class="debrief-row mb-2 flex items-center gap-2"
+          >
+            <input
+              v-model="debriefMissing[idx]"
+              type="text"
+              maxlength="120"
+              class="input flex-1"
+              :placeholder="`pl. vízálló kesztyű`"
+            />
+            <button
+              type="button"
+              class="btn-secondary px-2 py-1 text-xs"
+              :aria-label="`Hiányzó elem ${idx + 1} törlése`"
+              @click="removeDebriefRow('missing', idx)"
+            >
+              Törlés
+            </button>
+          </div>
+          <button
+            type="button"
+            class="btn-secondary px-2 py-1 text-xs"
+            aria-label="Új hiányzó elem hozzáadása"
+            @click="addDebriefRow('missing')"
+          >
+            + Adj hozzá újabb sort
+          </button>
+        </div>
+
+        <div class="debrief-field mb-4">
+          <label class="mb-2 block text-xs font-bold text-espresso-900">
+            Mi volt kényelmetlen?
+          </label>
+          <div
+            v-for="(_, idx) in debriefUncomfortable"
+            :key="`uncomfortable-${idx}`"
+            class="debrief-row mb-2 flex items-center gap-2"
+          >
+            <input
+              v-model="debriefUncomfortable[idx]"
+              type="text"
+              maxlength="120"
+              class="input flex-1"
+              :placeholder="`pl. a hálózsák túl szűk volt`"
+            />
+            <button
+              type="button"
+              class="btn-secondary px-2 py-1 text-xs"
+              :aria-label="`Kényelmetlen elem ${idx + 1} törlése`"
+              @click="removeDebriefRow('uncomfortable', idx)"
+            >
+              Törlés
+            </button>
+          </div>
+          <button
+            type="button"
+            class="btn-secondary px-2 py-1 text-xs"
+            aria-label="Új kényelmetlen elem hozzáadása"
+            @click="addDebriefRow('uncomfortable')"
+          >
+            + Adj hozzá újabb sort
+          </button>
+        </div>
+
+        <div class="mt-3 flex items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center rounded-card bg-moss-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-moss-800 focus:outline-none focus:ring-2 focus:ring-moss-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-moss-300"
+            data-testid="debrief-save"
+            :disabled="debriefSaving"
+            @click="saveDebriefHandler"
+          >
+            <AppSpinner
+              v-if="debriefSaving"
+              class="mr-2"
+              size="sm"
+              color="bark"
+              label="Mentés folyamatban"
+            />
+            {{ debriefSaving ? 'Mentés...' : 'Debrief mentése' }}
+          </button>
+        </div>
       </section>
     </div>
 

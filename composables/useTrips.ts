@@ -25,6 +25,7 @@ import type {
   TripCommentRowWithPending,
   TripRecapRow,
   TripRecapPhotoRow,
+  TripDebriefRow,
   EmailLookupResult,
 } from '~/types/db';
 import type {
@@ -60,6 +61,12 @@ export interface TripState {
     string,
     { recap: TripRecapRow | null; photos: TripRecapPhotoRow[] }
   >;
+  /**
+   * Per-trip debrief (P5 / v2 #23 "Mit bántam meg?"). NULL means the
+   * row doesn't exist yet (the user hasn't filled in the debrief); an
+   * empty {} shape means the row exists but every text[] is empty.
+   */
+  debriefByTripId: Record<string, TripDebriefRow | null>;
   loading: boolean;
   error: string | null;
 }
@@ -111,6 +118,7 @@ export function useTrips() {
     participantsByTripId: {},
     emailById: {},
     recapByTripId: {},
+    debriefByTripId: {},
     loading: false,
     error: null,
   }));
@@ -1038,6 +1046,57 @@ export function useTrips() {
     }
   };
 
+  // -------------------------------------------------------------------------
+  // P5 Trip debrief (Architect v2 #23 "Mit bántam meg?")
+  // -------------------------------------------------------------------------
+
+  /**
+   * Loads the debrief row for a trip into `state.debriefByTripId[tripId]`.
+   * Returns `null` when the row doesn't exist yet (the user hasn't saved
+   * one). Visibility is gated by RLS (owner + trip_visible_to); an
+   * unauthorized caller gets `null` instead of an error.
+   */
+  const loadDebrief = async (tripId: string) => {
+    state.value.error = null;
+    try {
+      const result = await $fetch<{ debrief: TripDebriefRow | null }>(
+        `/api/trips/${tripId}/debrief`,
+      );
+      state.value.debriefByTripId[tripId] = result?.debrief ?? null;
+      return result?.debrief ?? null;
+    } catch (e) {
+      setError(e);
+      throw e;
+    }
+  };
+
+  /**
+   * Owner-only upsert. Same shape as `upsertRecap` — the server endpoint
+   * uses `onConflict: 'trip_id'`, so the first call inserts and subsequent
+   * calls update the same row.
+   */
+  const saveDebrief = async (
+    tripId: string,
+    payload: {
+      excess_items?: string[];
+      missing_items?: string[];
+      uncomfortable_items?: string[];
+    },
+  ) => {
+    state.value.error = null;
+    try {
+      const row = await $fetch<TripDebriefRow>(
+        `/api/trips/${tripId}/debrief`,
+        { method: 'POST', body: payload },
+      );
+      state.value.debriefByTripId[tripId] = row;
+      return row;
+    } catch (e) {
+      setError(e);
+      throw e;
+    }
+  };
+
   const resetError = () => {
     state.value.error = null;
   };
@@ -1077,6 +1136,8 @@ export function useTrips() {
     reorderPhoto,
     updatePhotoCaption,
     deletePhoto,
+    loadDebrief,
+    saveDebrief,
     resetError,
   };
 }

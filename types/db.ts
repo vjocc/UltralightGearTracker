@@ -6,6 +6,20 @@
 
 export type UUID = string;
 
+/**
+ * P5 / v2 #21 — gear comfort rating. 3 subjektív dimenzió (sleep / cold /
+ * weight), 1..5 integer. Mindegyik opcionális — a user bármelyiket (vagy
+ * akár az összeset) kihagyhatja. A zod `gearComfortSchema` a szerver-oldali
+ * payload validációt végzi; a CHECK constraint a `gear_items.comfort`
+ * oszlopon a kulcsokat és a jsonb-típust szorítja (lásd
+ * `supabase/migrations/20260816000000_gear_comfort_rating.sql`).
+ */
+export interface GearComfort {
+  sleep?: number;   // 1..5
+  cold?: number;    // 1..5
+  weight?: number;  // 1..5
+}
+
 export interface CategoryRow {
   id: UUID;
   name: string;
@@ -24,6 +38,7 @@ export interface GearItemRow {
   weight_g: number;
   price: number | null;
   excluded_from_base: boolean;
+  comfort: GearComfort | null;
   created_at: string;
   updated_at: string;
 }
@@ -34,6 +49,7 @@ export interface GearItemInsert {
   weight_g: number;
   price?: number | null;
   excluded_from_base?: boolean;
+  comfort?: GearComfort | null;
 }
 
 export interface GearItemUpdate {
@@ -42,6 +58,7 @@ export interface GearItemUpdate {
   weight_g?: number;
   price?: number | null;
   excluded_from_base?: boolean;
+  comfort?: GearComfort | null;
 }
 
 export interface WishlistItemRow {
@@ -364,6 +381,33 @@ export interface EmailLookupResult {
 }
 
 /**
+ * Trip debrief row (see supabase/migrations/20260816000001_trip_debrief.sql).
+ * One row per trip (`unique (trip_id)`) carrying the post-trip
+ * "Mit bántam meg?" 3-kérdéses reflexió. 3 `text[]` mező (excess / missing
+ * / uncomfortable), mindegyik max 120 karakter / item, max 50 item / mező
+ * (lásd `shared/debriefSchemas.ts`).
+ *
+ * Visibility (RLS): owner OR `trip_visible_to(trip_id)`. A debrief nem
+ * publikus — nincs `public` flag (a debrief user-bevitel, nem publikus
+ * beszámoló; v2 §0 #5 elv).
+ */
+export interface TripDebriefRow {
+  id: UUID;
+  trip_id: UUID;
+  excess_items: string[];
+  missing_items: string[];
+  uncomfortable_items: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TripDebriefUpsert {
+  excess_items?: string[];
+  missing_items?: string[];
+  uncomfortable_items?: string[];
+}
+
+/**
  * Trip recap row (see supabase/migrations/20260813140000_trip_recap.sql).
  * One row per trip (`unique (trip_id)`) carrying the post-trip
  * élménybeszámoló body, a 0..10 satisfaction rating, and a public privacy
@@ -567,6 +611,7 @@ export interface Database {
       trip_recaps: TableShape<TripRecapRow>;
       public_lists: TableShape<PublicListRow>;
       trip_recap_photos: TableShape<TripRecapPhotoRow>;
+      trip_debriefs: TableShape<TripDebriefRow>;
     };
     Views: {
       gear_base_weights_view: ViewShape<GearBaseWeightRow>;
