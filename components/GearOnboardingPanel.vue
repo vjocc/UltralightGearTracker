@@ -71,6 +71,7 @@ const resetForm = () => {
   form.name = '';
   form.category_id = '';
   form.weight_g = '';
+  forcedComplete.value = false; // NEW: phase reset A./B. — Sprint 4.2 #4
 };
 
 const nameInputRef = useTemplateRef<HTMLInputElement>('nameInput');
