@@ -522,6 +522,74 @@ export interface PublicListResponse {
 }
 
 /**
+ * P7 / v2 #22 — Trip-aware loadout. A rule-based recommender
+ * (`(comfort_score - 1) / 4 × 0.6 + (1 - excess_rate) × 0.4`) per user
+ * gear item, derived from Phase 5 (`gear_items.comfort`, `trip_debriefs`)
+ * + Phase 6 (`trip_stats`) adatokból. Read-only: NEM módosítja a
+ * `gear_items` táblát, csak jelzi (v2 §0 #5: Trip ≠ My Gear).
+ *
+ * `comfort_score` 1..5 átlag a 3 dimenzióból (NULL ha 0 van kitöltve).
+ * `excess_appearances` 0..N, hányszor szerepelt a user
+ * `trip_debriefs.excess_items` listájában.
+ * `excess_rate` 0..1 = excess_appearances / total_user_trip_count.
+ * `recommendation_score` 0..1 = `comfort_score` SÚLYOZOTT (60%) +
+ * `1 - excess_rate` SÚLYOZOTT (40%). NULL comfort_score esetén csak
+ * excess-alapú pontozás (1 - excess_rate).
+ *
+ * A `reason` mező transzparens (rule-alapú, NEM ML), 5 értéket vehet fel:
+ *   high_comfort  — comfort_score >= 4 ÉS excess_rate < 0.5
+ *   low_excess    — comfort_score < 4 ÉS excess_rate < 0.3
+ *   both          — mindkét threshold teljesül
+ *   new_item      — nincs comfort adat, de soha nem szerepelt excess-ben
+ *   null          — nincs comfort, DE volt már excess (kizárjuk az
+ *                   ajánlásból)
+ */
+export type LoadoutRecommendationReason =
+  | 'high_comfort'
+  | 'low_excess'
+  | 'both'
+  | 'new_item'
+  | null;
+
+export interface LoadoutRecommendationItem {
+  gear_item_id: UUID;
+  name: string;
+  category_id: UUID | null;
+  weight_g: number;
+  comfort: GearComfort | null;
+  comfort_score: number | null;
+  excess_appearances: number;
+  excess_rate: number;
+  recommendation_score: number;
+  reason: LoadoutRecommendationReason;
+  /** Igaz, ha az item MÁR a trip-en van (NE ajánljuk hozzáadásra). */
+  already_on_trip: boolean;
+}
+
+export type LoadoutReadiness =
+  | 'enough_data'
+  | 'no_trips'
+  | 'no_debriefs'
+  | 'no_comfort';
+
+export interface LoadoutRecommendationsResponse {
+  trip_id: UUID;
+  /** Top-N (max 6, threshold >= 0.5) — még nincs a trip-en, érdemes hozzáadni. */
+  add_candidates: LoadoutRecommendationItem[];
+  /** Top-N (max 6, threshold >= 0.5) — már a trip-en van, érdemes megtartani. */
+  keep_candidates: LoadoutRecommendationItem[];
+  meta: {
+    user_trip_count: number;
+    user_debrief_count: number;
+    user_comfort_items_count: number;
+    /** Hány gear item került pontozásra (van comfort VAGY excess adat). */
+    scored_items_count: number;
+    /** Single source of truth az empty state-hez; lásd §2.6. */
+    readiness: LoadoutReadiness;
+  };
+}
+
+/**
  * Database shape consumed by @nuxtjs/supabase's typed client.
  *
  * Implementation note — `GenericTable` compatibility:

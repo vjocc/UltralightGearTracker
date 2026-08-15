@@ -69,6 +69,38 @@ const { state: catState, list: listCategories } = useCategories();
 const user = useSessionUser();
 const { fetchOnce: fetchTripWeight, refresh: refreshTripWeight } =
   useTripWeight(tripId.value);
+// P7 / v2 #22 — dedikált composable, NEM useTrips/useStats bővítése
+// (v2 §0 #5: Trip ≠ My Gear; a loadout 4 forrásból aggregál).
+const {
+  state: loadoutRecsState,
+  load: loadLoadoutRecs,
+  get: getLoadoutRecs,
+  emptyStateCopy: loadoutEmptyStateCopy,
+  reasonCopy: loadoutReasonCopy,
+} = useLoadoutRecommendations();
+
+// Az aktuális trip loadout ajánlás-repsonse (read-only cache a
+// useState-ből).
+const loadoutRecsResponse = computed(() =>
+  getLoadoutRecs(tripId.value),
+);
+const loadoutRecsMeta = computed(
+  () => loadoutRecsResponse.value?.meta ?? null,
+);
+const loadoutRecsAdd = computed(
+  () => loadoutRecsResponse.value?.add_candidates ?? [],
+);
+const loadoutRecsKeep = computed(
+  () => loadoutRecsResponse.value?.keep_candidates ?? [],
+);
+const loadoutRecsReady = computed(() => {
+  const r = loadoutRecsResponse.value;
+  if (!r) return null;
+  return r.meta?.readiness ?? null;
+});
+const loadoutRecsSubtitle = computed(() =>
+  loadoutEmptyStateCopy(loadoutRecsReady.value),
+);
 
 // Gated by middleware; defensive guard for SSR pre-hydration.
 if (import.meta.client && !user.value) {
@@ -761,6 +793,10 @@ onMounted(async () => {
     // P5 Debrief — same pattern; `loadDebrief` returns null when no row
     // exists yet, which we tolerate silently.
     loadDebrief(tripId.value).catch(() => undefined),
+    // P7 / v2 #22 — Trip-aware loadout. Read-only, NEM ír a
+    // gear_items táblába; a 4 empty state a `meta.readiness`-ből
+    // jön. Promise.all-ban fut, a hiba nem állítja meg a többit.
+    loadLoadoutRecs(tripId.value).catch(() => undefined),
   ]);
 });
 </script>
@@ -1799,6 +1835,140 @@ onMounted(async () => {
             {{ debriefSaving ? 'Mentés...' : 'Debrief mentése' }}
           </button>
         </div>
+      </section>
+
+      <!--
+        #22 Trip-aware loadout — owner-only read-only szekció a
+        Debrief UTÁN (a Debrief az adatforrás a Phase 5-ből, a
+        loadout az adatfelhasználó). A rule-based ajánlás a user
+        VALÓDI gear-listájából + a user VALÓDI comfort-értékeléséből
+        + a user VALÓDI excess_items előfordulásaiból jön (NEM ML,
+        NEM feltételezett starter pack, v2 §0 #1, #3, #5 szigorúan).
+
+        Top-N=6 (3 add + 3 keep) a 2-col gridben (§8 #2 döntés).
+        4-féle empty state a `meta.readiness`-ből (§2.6, §8 #1).
+        A scoring formula:
+          (comfort_score - 1) / 4 × 0.6 + (1 - excess_rate) × 0.4
+        Csak az `excess_items`-t büntetjük (§8 #4); a reason mező
+        inline (NEM modal, v2 §0 #3 tiltja a tooltip-eket is).
+      -->
+      <section
+        v-if="isOwnerViewer"
+        class="loadout-recs-section mt-4 rounded-card border border-blushMid-200 bg-blushLight-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
+        data-testid="loadout-recs-section"
+        aria-label="Trip-aware loadout"
+      >
+        <header class="mb-3">
+          <h3 class="text-sm font-semibold tracking-tight text-espresso-900">
+            Trip-aware loadout
+          </h3>
+          <p class="mt-1 text-xs italic text-umber-500">
+            {{ loadoutRecsSubtitle }}
+          </p>
+        </header>
+
+        <!-- Empty / readiness-állapotok (§2.6) -->
+        <div
+          v-if="loadoutRecsReady !== 'enough_data'"
+          class="loadout-recs-empty rounded-card border border-blushMid-200 bg-white/60 p-3 text-xs text-umber-700"
+          data-testid="loadout-recs-empty"
+        >
+          <p class="mb-2 font-medium text-espresso-800">
+            {{ loadoutRecsMeta ? '' : 'Az ajánlás még nem elérhető — próbáld újra kicsit később.' }}
+          </p>
+          <p class="text-umber-700">
+            {{ loadoutRecsSubtitle }}
+          </p>
+        </div>
+
+        <!-- Két oszlop: add + keep -->
+        <div
+          v-else
+          class="loadout-recs-grid grid grid-cols-1 gap-4 md:grid-cols-2"
+          data-testid="loadout-recs-grid"
+        >
+          <div
+            class="loadout-recs-add rounded-card border border-blushMid-200 bg-white/60 p-3"
+            data-testid="loadout-recs-add"
+          >
+            <h4 class="text-xs font-bold text-espresso-900">
+              Ajánlott hozzáadni
+            </h4>
+            <ul
+              v-if="loadoutRecsAdd.length > 0"
+              class="mt-2 space-y-2"
+            >
+              <li
+                v-for="rec in loadoutRecsAdd"
+                :key="rec.gear_item_id"
+                class="loadout-rec-item flex items-baseline justify-between gap-2 text-xs"
+              >
+                <span class="font-medium text-espresso-900">
+                  {{ rec.name }}
+                </span>
+                <span class="whitespace-nowrap text-umber-600">
+                  ({{ rec.weight_g }} g)
+                </span>
+                <span class="ml-auto text-[10px] italic text-umber-500">
+                  {{ loadoutReasonCopy(rec.reason) }}
+                </span>
+              </li>
+            </ul>
+            <p
+              v-else
+              class="mt-2 text-xs italic text-umber-500"
+            >
+              Nincs új ajánlás — a meglévő trip-ed már a lehető legjobb.
+            </p>
+          </div>
+
+          <div
+            class="loadout-recs-keep rounded-card border border-blushMid-200 bg-white/60 p-3"
+            data-testid="loadout-recs-keep"
+          >
+            <h4 class="text-xs font-bold text-espresso-900">
+              Ezeket érdemes megtartani
+            </h4>
+            <ul
+              v-if="loadoutRecsKeep.length > 0"
+              class="mt-2 space-y-2"
+            >
+              <li
+                v-for="rec in loadoutRecsKeep"
+                :key="rec.gear_item_id"
+                class="loadout-rec-item flex items-baseline justify-between gap-2 text-xs"
+              >
+                <span class="font-medium text-espresso-900">
+                  {{ rec.name }}
+                </span>
+                <span class="whitespace-nowrap text-umber-600">
+                  ({{ rec.weight_g }} g)
+                </span>
+                <span class="ml-auto text-[10px] italic text-umber-500">
+                  {{ loadoutReasonCopy(rec.reason) }}
+                </span>
+              </li>
+            </ul>
+            <p
+              v-else
+              class="mt-2 text-xs italic text-umber-500"
+            >
+              Nincs megerősített item — a trip-ed összes elemét jelöld meg a
+              komfort-értékelésben.
+            </p>
+          </div>
+        </div>
+
+        <p
+          v-if="loadoutRecsReady === 'enough_data' && loadoutRecsMeta"
+          class="mt-3 text-[10px] text-umber-500"
+        >
+          {{ loadoutRecsMeta.scored_items_count }} item került pontozásra ·
+          {{ loadoutRecsMeta.user_trip_count }} túra ·
+          {{ loadoutRecsMeta.user_debrief_count }} debrief ·
+          {{ loadoutRecsMeta.user_comfort_items_count }} komfort-értékelt item.
+          Scoring: (komfort − 1)/4 × 0.6 + (1 − felesleg-ráta) × 0.4.
+        </p>
       </section>
     </div>
 
