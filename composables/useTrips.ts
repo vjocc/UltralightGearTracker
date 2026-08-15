@@ -170,6 +170,12 @@ export function useTrips() {
         body: input,
       });
       state.value.items = [row, ...state.value.items];
+      // Sprint 5 P0.3 — activation funnel: first_trip_created (B opció: saját events tábla).
+      // A first_* guard a useFunnelEvents belsejében (useState flag + server idempotens check).
+      if (state.value.items.length === 1) {
+        const { trackEvent } = useFunnelEvents();
+        trackEvent('first_trip_created');
+      }
       return row;
     } catch (e) {
       setError(e);
@@ -236,6 +242,13 @@ export function useTrips() {
             )
           : [...state.value.current.trip_gear, row];
       }
+      // Sprint 5 P0.3 — activation funnel: first_loadout_assembled.
+      // A first_* guard a useFunnelEvents belsejében.
+      // A "first loadout" mérése user-szinten: az adott user első
+      // trip_gear INSERT-je. Az adott user az adott user_id auth.uid(),
+      // tehát a first_X guard a saját user-scoped useState flag-et nézi.
+      const { trackEvent } = useFunnelEvents();
+      trackEvent('first_loadout_assembled', { trip_id: tripId });
       return row;
     } catch (e) {
       setError(e);
@@ -1090,6 +1103,42 @@ export function useTrips() {
         { method: 'POST', body: payload },
       );
       state.value.debriefByTripId[tripId] = row;
+      // Sprint 5 P0.3 — activation funnel: first_debrief_written.
+      // A first_* guard a useFunnelEvents belsejében.
+      // A `loadDebrief` előzőleg null volt (nincs meglévő debrief) — a
+      // guard a useState flag-en át user-szinten szűr.
+      const { trackEvent } = useFunnelEvents();
+      trackEvent('first_debrief_written');
+      return row;
+    } catch (e) {
+      setError(e);
+      throw e;
+    }
+  };
+
+  /**
+   * Owner-only: marks the trip as completed (`trips.completed_at =
+   * now()`). Backend: POST /api/trips/:id/complete (RLS Strict,
+   * owner-only UPDATE). Sprint 5 P0.3 — activation funnel: the
+   * close-trip flow triggers `first_completed_trip` capture
+   * (different from `first_loadout_assembled` because the loop
+   * logikája Trip → Loadout → Hike → Debrief; Hike = completed).
+   */
+  const markTripCompleted = async (tripId: string) => {
+    state.value.error = null;
+    try {
+      const row = await $fetch<TripRow>(`/api/trips/${tripId}/complete`, {
+        method: 'POST',
+      });
+      if (state.value.current?.id === tripId) {
+        state.value.current = {
+          ...state.value.current,
+          ...row,
+        };
+      }
+      // Capture: first_completed_trip (B opció: saját events tábla).
+      const { trackEvent } = useFunnelEvents();
+      trackEvent('first_completed_trip', { trip_id: tripId });
       return row;
     } catch (e) {
       setError(e);
@@ -1138,6 +1187,7 @@ export function useTrips() {
     deletePhoto,
     loadDebrief,
     saveDebrief,
+    markTripCompleted,
     resetError,
   };
 }

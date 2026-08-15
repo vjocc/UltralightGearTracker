@@ -83,6 +83,10 @@ const signUp = async () => {
     } else {
       // autoConfirm OFF → confirmation email sent
       signedUp.value = true;
+      // Sprint 5 P0.3 — activation funnel: signup_completed (B opció: saját events tábla).
+      // A first_* guard a useFunnelEvents belsejében (useState flag + server idempotens check).
+      const { trackEvent } = useFunnelEvents();
+      trackEvent('signup_completed', { source: 'email' });
     }
   } catch (e) {
     const err = e as Error;

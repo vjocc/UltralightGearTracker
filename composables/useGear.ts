@@ -49,6 +49,12 @@ export function useGear() {
       });
       state.value.items = [row, ...state.value.items];
       await refreshNuxtData('base-weight');
+      // Sprint 5 P0.3 — activation funnel: first_gear_added (B opció: saját events tábla).
+      // A first_* guard a useFunnelEvents belsejében (useState flag + server idempotens check).
+      if (state.value.items.length === 1) {
+        const { trackEvent } = useFunnelEvents();
+        trackEvent('first_gear_added', { category_id: row.category_id ?? undefined });
+      }
       return row;
     } catch (e) {
       setError(e);

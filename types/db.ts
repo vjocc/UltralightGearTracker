@@ -103,6 +103,13 @@ export interface TripRow {
   description: string | null;
   start_date: string | null;
   end_date: string | null;
+  /**
+   * P0.3 — activation funnel: NULL = tervezett, NOT NULL = elment.
+   * Setter: POST /api/trips/:id/complete (owner-only). A user a
+   * Trip-UI "Túra lezárása" gombbal jelzi, hogy elment. A séma
+   * migration: 20260816000000_trips_completed_at.sql.
+   */
+  completed_at: string | null;
   created_at: string;
   updated_at: string;
 }
