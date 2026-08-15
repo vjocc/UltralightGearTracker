@@ -20,6 +20,7 @@
  */
 import type { GearItemRow, PublicListRow } from '~/types/db';
 import { ONBOARDING_KÜSZÖB } from '~/composables/useOnboardingPhase';
+import { useTemplateRef } from 'vue';
 
 definePageMeta({
   title: 'Gear',
@@ -34,8 +35,20 @@ const supabase = useSupabaseClient();
 // Phase 2: show the inline onboarding panel while the user is still in
 // the 0..KÜSZÖB-1 window. The KÜSZÖB const is shared with the panel
 // (composables/useOnboardingPhase.ts) so the two stay in sync.
+//
+// Sprint 5 P0.2 — F3: a panel-lokális `forcedComplete` flag-et is
+// respektálni kell (a panel defineExpose-olja). Ha a user "Ennyi volt"-ot
+// mondott 2 item-nél, a panel C.-be megy (slim completion bar) ÉS a
+// page-szintű showOnboarding false lesz — a panel nem mountol újra
+// re-render / item-mutáció hatására. A panel re-mountjakor (pl. item
+// törlése miatt a page-szintű computed újra true lesz) a forcedComplete
+// flag tiszta lappal indul a panel életciklusából.
+const panelRef = useTemplateRef<{ forcedComplete: boolean }>('onboardingPanel');
 const showOnboarding = computed(
-  () => state.value.items.length < ONBOARDING_KÜSZÖB && !!user.value
+  () =>
+    state.value.items.length < ONBOARDING_KÜSZÖB &&
+    !!user.value &&
+    !panelRef.value?.forcedComplete
 );
 
 // Gated by middleware; this is a defensive guard for SSR pre-hydration.
@@ -264,9 +277,20 @@ const copyShareUrl = async () => {
           class="btn-primary"
           @click="openCreate"
         >
-          + Add gear
+          + Új gear
         </button>
       </div>
+      <!-- Sprint 5 P0.2 — F1: gear-felvitel segéd-szöveg a "+ Új gear"
+           gomb mellett. A user-listából a "gyors és egyszerű" cél:
+           a user lássa, hogy a flow 3 mező (név + kategória + súly grammban),
+           és hogy a mentés azonnali. Halvány, vizuálisan nem tolakodó. -->
+      <p
+        v-if="state.items.length > 0"
+        class="mt-1 w-full text-xs italic text-gray-500"
+        data-testid="add-gear-help"
+      >
+        Adj meg nevet, kategóriát és súlyt grammban — a mentés azonnali.
+      </p>
     </div>
 
     <!-- Phase 3: when a public_lists row exists (regardless of is_public
@@ -316,7 +340,7 @@ const copyShareUrl = async () => {
     <!-- Phase 2: inline onboarding panel (A/B/C phases). Replaces the
          former GearEmptyState CTA — GearEmptyState.vue is kept on disk
          as an orphan for rollback. -->
-    <GearOnboardingPanel v-if="showOnboarding" />
+    <GearOnboardingPanel v-if="showOnboarding" ref="onboardingPanel" />
 
     <ErrorBanner
       :message="state.error"
