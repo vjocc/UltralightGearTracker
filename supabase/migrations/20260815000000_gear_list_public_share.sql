@@ -96,7 +96,13 @@ create or replace function public.public_list_lookup(p_share_token uuid)
   language sql
   stable
   security definer
-  set search_path = public, auth
+  -- Strict search_path to avoid the canonical SECURITY DEFINER hijacking vector
+  -- (Supabase docs §search_path): we only ever query `public.public_lists`, never
+  -- any user-writable schema, so we lock to {public, pg_temp}. `auth` is NOT
+  -- queried at runtime — it is only referenced in the DDL constraint above
+  -- (`references auth.users(id)`), so omitting it from the runtime search_path
+  -- is intentional (defense-in-depth).
+  set search_path = public, pg_temp
 as $$
   select pl.user_id
     from public.public_lists pl
