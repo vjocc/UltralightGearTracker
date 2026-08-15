@@ -6,9 +6,15 @@ import type { Database } from '~/types/db';
  *
  * Aggregates the signed-in user's gear into:
  *   - total_grams:     sum of grams for non-excluded items
- *   - per_category:    { category_id, category_name, grams, item_count }
+ *   - per_category:    { category_id, category_name, grams, item_count,
+ *                        percent, color_token }
  *                      per category, only including non-excluded items
- *                      (categories with 0 grams are dropped — see F.4)
+ *                      (categories with 0 grams are dropped — see F.4).
+ *                      Phase 4 (visual-weight): each entry also carries
+ *                      `percent` (0-100, 1 decimal) and `color_token`
+ *                      (MemoFox palette key — see MEMOFOX_CHART_PALETTE).
+ *                      Both are computed server-side so SSR/CSR stay
+ *                      hydration-consistent.
  *   - excluded_grams:  sum of grams for excluded items
  *   - excluded_count:  count of excluded items
  *
@@ -25,6 +31,12 @@ import type { Database } from '~/types/db';
  *   excluded_from_base = false filter. The server route is the single
  *   source of truth.
  */
+
+// MemoFox palette rotation for chart bars. Cyclic: index i uses
+// MEMOFOX_CHART_PALETTE[i % palette.length]. Tailwind classes
+// `bg-brand-500`, `bg-ember-500`, etc. resolve these tokens.
+const MEMOFOX_CHART_PALETTE = ['brand', 'ember', 'moss', 'umber', 'espresso'] as const;
+
 export default defineEventHandler(async (event) => {
   const supabase = await serverSupabaseClient<Database>(event);
 
@@ -87,9 +99,20 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const per_category = Array.from(bucket.values()).sort(
-    (a, b) => b.grams - a.grams
-  );
+  // grams DESC, then decorate with percent + color_token (Phase 4).
+  // percent is computed against total_grams; color_token cycles through
+  // the MemoFox palette so the largest row gets `brand`, the next
+  // `ember`, etc. — deterministic, server-side, hydration-safe.
+  const per_category = Array.from(bucket.values())
+    .sort((a, b) => b.grams - a.grams)
+    .map((row, i) => ({
+      ...row,
+      percent:
+        total_grams > 0
+          ? Math.round((row.grams / total_grams) * 1000) / 10
+          : 0,
+      color_token: MEMOFOX_CHART_PALETTE[i % MEMOFOX_CHART_PALETTE.length],
+    }));
 
   return {
     total_grams,

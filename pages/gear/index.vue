@@ -267,6 +267,12 @@ const copyShareUrl = async () => {
 
     <BaseWeightSummary />
 
+    <!-- Phase 4 (visual-weight #20): per-category horizontal bar chart.
+         Reuses useBaseWeight() via <WeightBreakdownChart />; renders
+         nothing on error / empty (BaseWeightSummary already surfaces
+         those). -->
+    <WeightBreakdownChart />
+
     <!-- Phase 2: inline onboarding panel (A/B/C phases). Replaces the
          former GearEmptyState CTA — GearEmptyState.vue is kept on disk
          as an orphan for rollback. -->

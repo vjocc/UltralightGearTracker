@@ -18,6 +18,12 @@ export interface BaseWeightPerCategory {
   category_name: string | null;
   grams: number;
   item_count: number;
+  // Phase 4 (visual-weight): server-computed decoration for the
+  // WeightBreakdownChart. `percent` is 0-100 with one decimal;
+  // `color_token` is a MemoFox palette key (brand / ember / moss /
+  // umber / espresso, cyclic).
+  percent: number;
+  color_token: string;
 }
 
 export interface BaseWeightSummary {
