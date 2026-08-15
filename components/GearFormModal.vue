@@ -14,10 +14,22 @@
  * the user can fill in any subset (or none). The form state is a
  * `GearComfort | null` and is hydrated from the existing item on edit
  * (or reset to all-null on create).
+ *
+ * Sprint 4.2 fix #3 — inline save feedback. In edit mode each star click
+ * (and each "Törlés" click) fires an immediate PATCH /api/gear/:id with
+ * just the `comfort` field and shows a per-row status indicator:
+ *   •  pending   — light gray bullet while the request is in flight
+ *   ✓  success   — green checkmark, auto-clears after 1.5s
+ *   ✗  error     — red X + tooltip with the server error message, sticks
+ *                  until the next interaction (so the user can read it)
+ * In create mode the gear row doesn't exist yet, so the rating rides along
+ * with the full submit payload (status indicators stay hidden there).
  */
 import { z } from 'zod';
 import { gearCreateSchema } from '~/shared/gearSchemas';
 import type { GearItemRow, CategoryRow, GearComfort } from '~/types/db';
+
+type ComfortSaveStatus = 'idle' | 'pending' | 'success' | 'error';
 
 const props = defineProps<{
   open: boolean;
@@ -72,6 +84,15 @@ const resetForm = () => {
     cold: c?.cold,
     weight: c?.weight,
   };
+  // Sprint 4.2 fix #3 — wipe any leftover per-row save status so the
+  // indicators don't carry over from a previous item the user just
+  // edited.
+  comfortSaveStatus.sleep = 'idle';
+  comfortSaveStatus.cold = 'idle';
+  comfortSaveStatus.weight = 'idle';
+  comfortSaveError.sleep = '';
+  comfortSaveError.cold = '';
+  comfortSaveError.weight = '';
   fieldErrors.value = {};
 };
 
@@ -81,6 +102,13 @@ watch(
   ([open]) => {
     if (open) {
       resetForm();
+    } else {
+      // Cancel any pending success-clearing timer when the modal closes
+      // so it can't fire after unmount and clobber a fresh row's status.
+      if (comfortSuccessTimer) {
+        clearTimeout(comfortSuccessTimer);
+        comfortSuccessTimer = null;
+      }
     }
   },
   { immediate: true }
@@ -137,12 +165,80 @@ const comfortLabels: Array<{ key: ComfortKey; label: string; hint: string }> = [
   { key: 'weight', label: 'Súlya', hint: 'Mennyire érezhető a vállon / háton?' },
 ];
 
+// Per-row save status + sticky error message. Keyed by ComfortKey so each
+// row's indicator updates independently. `idle` is the default state
+// (indicator hidden). A 1.5s timer flips `success` back to `idle` so the
+// checkmark doesn't linger forever; `error` sticks until the next save
+// attempt so the message stays readable.
+const comfortSaveStatus = reactive<Record<ComfortKey, ComfortSaveStatus>>({
+  sleep: 'idle',
+  cold: 'idle',
+  weight: 'idle',
+});
+const comfortSaveError = reactive<Record<ComfortKey, string>>({
+  sleep: '',
+  cold: '',
+  weight: '',
+});
+
+let comfortSuccessTimer: ReturnType<typeof setTimeout> | null = null;
+
+const { update } = useGear();
+
+const patchComfort = async (key: ComfortKey) => {
+  // In create mode there's no row to PATCH yet — the rating rides along
+  // with the full submit payload below. Skip the network call entirely
+  // and leave the indicator hidden.
+  if (!isEdit.value || !props.item) return;
+
+  // Clear any lingering success timer so a rapid double-click doesn't
+  // reset the indicator mid-flight.
+  if (comfortSuccessTimer) {
+    clearTimeout(comfortSuccessTimer);
+    comfortSuccessTimer = null;
+  }
+
+  // Build the same partial payload the parent would have sent. We strip
+  // undefined dims (matching the server schema's `.optional()` semantics)
+  // and send `null` when nothing is rated anymore (Törlés on the last
+  // dimension). The server treats a null comfort as "no rating".
+  const hasAnyRating =
+    form.comfort.sleep !== undefined ||
+    form.comfort.cold !== undefined ||
+    form.comfort.weight !== undefined;
+  const comfort: GearComfort | null = hasAnyRating
+    ? {
+        ...(form.comfort.sleep !== undefined ? { sleep: form.comfort.sleep } : {}),
+        ...(form.comfort.cold !== undefined ? { cold: form.comfort.cold } : {}),
+        ...(form.comfort.weight !== undefined ? { weight: form.comfort.weight } : {}),
+      }
+    : null;
+
+  comfortSaveStatus[key] = 'pending';
+  comfortSaveError[key] = '';
+  try {
+    await update(props.item.id, { comfort });
+    comfortSaveStatus[key] = 'success';
+    comfortSuccessTimer = setTimeout(() => {
+      comfortSaveStatus[key] = 'idle';
+      comfortSuccessTimer = null;
+    }, 1500);
+  } catch (e) {
+    const err = e as { statusMessage?: string; message?: string };
+    comfortSaveStatus[key] = 'error';
+    comfortSaveError[key] =
+      err?.statusMessage ?? err?.message ?? 'Mentés sikertelen';
+  }
+};
+
 const setComfort = (key: ComfortKey, value: number) => {
   form.comfort[key] = value;
+  void patchComfort(key);
 };
 
 const clearComfort = (key: ComfortKey) => {
   form.comfort[key] = undefined;
+  void patchComfort(key);
 };
 
 const starTitle = (key: ComfortKey, value: number): string => {
@@ -396,6 +492,46 @@ onBeforeUnmount(() => {
                 </button>
                 <span v-else class="text-[10px] uppercase tracking-wide text-gray-400">
                   —
+                </span>
+                <!--
+                  Sprint 4.2 fix #3 — per-row save indicator. Hidden in
+                  create mode (no row to PATCH yet). Shows:
+                    • pending   — gray bullet, request in flight
+                    ✓ success   — green check, auto-clears after 1.5s
+                    ✗ error     — red X + native tooltip with the message
+                  Uses `role="status"` + `aria-live="polite"` so screen
+                  readers announce the outcome without stealing focus.
+                -->
+                <span
+                  v-if="isEdit && comfortSaveStatus[row.key] !== 'idle'"
+                  class="ml-1 inline-flex items-center text-xs leading-none"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <template v-if="comfortSaveStatus[row.key] === 'pending'">
+                    <span
+                      class="inline-block h-2 w-2 rounded-full bg-gray-400"
+                      aria-label="Mentés folyamatban"
+                    />
+                  </template>
+                  <template v-else-if="comfortSaveStatus[row.key] === 'success'">
+                    <span
+                      class="font-semibold text-green-600"
+                      aria-label="Mentve"
+                      title="Mentve"
+                    >
+                      ✓
+                    </span>
+                  </template>
+                  <template v-else>
+                    <span
+                      class="font-semibold text-red-600"
+                      :aria-label="`Mentés sikertelen: ${comfortSaveError[row.key]}`"
+                      :title="comfortSaveError[row.key]"
+                    >
+                      ✗
+                    </span>
+                  </template>
                 </span>
               </div>
             </div>
