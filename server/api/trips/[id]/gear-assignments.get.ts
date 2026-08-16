@@ -48,21 +48,23 @@ export default defineEventHandler(async (event) => {
 
   const supabase = await serverSupabaseClient<Database>(event);
 
-  // (1) Owner-check — a §11.2 A default: kizárólag a trip owner-je
-  // láthatja a „Ki mit visz" nézetet. A trips SELECT RLS owner-scoped
-  // maradt a P0 óta, így a SELECT-re .single() 404-et dob a
-  // nem-owner / stranger hívóra. A meglévő trips/[id].get.ts
-  // mintát követjük (visibility-t NEM ellenőrizzük itt).
-  const { data: tripRow, error: tripErr } = await supabase
-    .from('trips')
-    .select('id, user_id')
-    .eq('id', tripId)
-    .maybeSingle();
-  if (tripErr || !tripRow) {
-    throw createError({ statusCode: 404, statusMessage: 'Trip not found' });
-  }
-  if (tripRow.user_id !== callerId) {
-    throw createError({ statusCode: 403, statusMessage: 'Owner-only' });
+  // (1) Visibility-check — a §11.2 B user-döntés szerint a „Ki mit visz"
+  // nézetet MINDEN trip-résztvevő láthatja (owner + accepted invitee +
+  // accepted friend), NEM owner-only. A meglévő `trip_visible_to()`
+  // SECURITY DEFINER function-t használjuk (Phase 2 social-ből örökölt,
+  // NEM bővítjük). A function owner OR accepted_invitee OR
+  // accepted_friend feltételt ellenőriz.
+  const { data: isVisible, error: rpcErr } = await supabase.rpc(
+    'trip_visible_to',
+    { p_trip_id: tripId },
+  );
+  if (rpcErr || !isVisible) {
+    // RLS denial OR trip not visible → 404 hide-the-cause
+    // (a meglévő trips/[id].get.ts mintájára).
+    throw createError({
+      statusCode: 404,
+      statusMessage: 'Trip not found',
+    });
   }
 
   // (2) SELECT trip_gear + JOIN gear_items + JOIN categories (left join
