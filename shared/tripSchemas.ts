@@ -63,12 +63,38 @@ export const tripGearAddSchema = z.object({
     .default(1),
 });
 
-export const tripGearUpdateSchema = z.object({
-  quantity: z
-    .number({ message: 'Quantity must be a number' })
-    .int('Whole numbers only')
-    .min(1, 'At least 1'),
-});
+// PATCH semantics: at least one of `quantity` / `assigned_to_user_id` must
+// be present. Both are optional individually so the existing quantity-only
+// callers continue to work; the UI / endpoint enforces "at least one".
+export const tripGearUpdateSchema = z
+  .object({
+    quantity: z
+      .number({ message: 'Quantity must be a number' })
+      .int('Whole numbers only')
+      .min(1, 'At least 1')
+      .optional(),
+    /**
+     * Sprint 5 P2 — "Ki mit visz" csomaglista-egyeztetés.
+     * Opcionális (a §11.1 user-döntés szerinti A default). UUID = user-hez
+     * rendelés, NULL = hozzárendelés törlése. A szerver oldali zod séma a
+     * típust + uuid formátumot ellenőrzi; a jogosultsági kört (a user_id
+     * a trip résztvevőinek listáján legyen) a PATCH endpoint saját
+     * SELECT-tel ellenőrzi.
+     */
+    assigned_to_user_id: z
+      .string()
+      .uuid('Must be a valid user id')
+      .nullable()
+      .optional(),
+  })
+  .refine(
+    (d) =>
+      d.quantity !== undefined || d.assigned_to_user_id !== undefined,
+    {
+      message: 'Provide quantity or assigned_to_user_id (or both)',
+      path: ['quantity'],
+    },
+  );
 
 export type TripCreateInput = z.infer<typeof tripCreateSchema>;
 export type TripUpdateInput = z.infer<typeof tripUpdateSchema>;

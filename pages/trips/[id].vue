@@ -40,6 +40,9 @@ const {
   addGear,
   updateGearQty,
   removeGear,
+  // Sprint 5 P2 — "Ki mit visz" user-hozzárendelés
+  updateGearAssignment,
+  fetchGearAssignments,
   uploadGpx,
   // P2 Social
   inviteByEmail,
@@ -178,6 +181,28 @@ const handlePickerSave = async (payload: {
     // the new totals immediately (acceptance #6 — picker save must
     // update the summary without a manual reload).
     await refreshTripWeight();
+  }
+};
+
+/**
+ * Sprint 5 P2 — owner-only "Hozzárendelés" dropdown change handler.
+ * A TripGearPicker a PATCH-et a useTrips.updateGearAssignment-on
+ * keresztül küldi; a response (a frissített trip_gear sor) a
+ * state.current.trip_gear tömbbe kerül, a gearAssignmentsByTripId
+ * cache invalidálódik.
+ */
+const handlePickerAssign = async (payload: {
+  gear_item_id: string;
+  assigned_to_user_id: string | null;
+}) => {
+  try {
+    await updateGearAssignment(
+      tripId.value,
+      payload.gear_item_id,
+      payload.assigned_to_user_id,
+    );
+  } catch {
+    // surfaced via state.error
   }
 };
 
@@ -424,6 +449,23 @@ const declinedInvites = computed(
 const participants = computed(
   () => state.value.participantsByTripId[tripId.value] ?? [],
 );
+
+// Sprint 5 P2 — "Ki mit visz" aggregált nézet cache. A fetch-et
+// az `await loadGearAssignments()` lazy triggereli; a template
+// `v-if` gate (`isTripOwner`) védi a nem-owner hívókat.
+const gearAssignments = computed(
+  () => state.value.gearAssignmentsByTripId[tripId.value] ?? null,
+);
+
+/**
+ * P2 — "Ki mit visz" aggregált nézet lazy betöltése. A page
+ * mountkor hívjuk (a listParticipants-szel párhuzamosan). A
+ * owner-only gate-et a template `v-if` biztosítja — a
+ * fetchGearAssignments 403/404 esetén nem szennyezi a state.error-t.
+ */
+const loadGearAssignments = async () => {
+  await fetchGearAssignments(tripId.value).catch(() => null);
+};
 
 // P3.2 — Accept/Decline handlers for the Meghívó banner. The server
 // endpoint returns 409 when the invite is not in pending state, so we
@@ -844,6 +886,9 @@ onMounted(async () => {
     listInvites(tripId.value, 'accepted').catch(() => undefined),
     listInvites(tripId.value, 'declined').catch(() => undefined),
     listParticipants(tripId.value).catch(() => undefined),
+    // Sprint 5 P2 — "Ki mit visz" aggregált nézet, owner-only. A
+    // 403/404 hibák a fetchGearAssignments belsejében lenyelődnek.
+    loadGearAssignments().catch(() => undefined),
     // P3.2 — moved from TripCommentThread.onMounted so the comment
     // thread doesn't double-fetch when both the page and component
     // mount.
@@ -1138,10 +1183,100 @@ onMounted(async () => {
           :trip="state.current"
           :gear="gearState.items"
           :categories="catState.items"
+          :participants="participants"
+          :is-owner-viewer="isTripOwner"
           :submitting="pickerSubmitting"
           @save="handlePickerSave"
+          @assign="handlePickerAssign"
         />
       </div>
+
+      <!-- Sprint 5 P2 — Ki mit visz (csoportos csomaglista-egyeztetés).
+           Owner-only (§11.2 A default). A `gearAssignments` computed
+           a useTrips.gearAssignmentsByTripId cache-ből olvas; a §11.3
+           A user-döntés szerinti userenkénti csoportosítás: minden
+           participant egy blokk (email + összsúly + item lista). A
+           user_id = null bucket ("Nincs hozzárendelve") a lista
+           végén jelenik meg. -->
+      <section
+        v-if="isTripOwner"
+        class="rounded-card border border-blushMid-200 bg-blushLight-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
+        aria-label="Ki mit visz"
+      >
+        <header class="flex items-baseline justify-between">
+          <h3 class="text-sm font-semibold tracking-tight text-espresso-900">
+            Ki mit visz
+          </h3>
+          <span class="text-xs text-umber-500">
+            {{
+              gearAssignments
+                ? gearAssignments.participants.length + ' résztvevő'
+                : 'Betöltés…'
+            }}
+          </span>
+        </header>
+        <p class="mt-1 text-xs text-umber-500">
+          A felszerelés elemeket user-szinten csoportosítva mutatjuk,
+          hogy lásd, ki mit visz a túrára. A hozzárendelést a
+          fenti listán szerkesztheted.
+        </p>
+
+        <p
+          v-if="gearAssignments && gearAssignments.participants.length === 0"
+          class="mt-3 text-xs text-umber-500"
+        >
+          Még nincs hozzárendelt item. Jelölj ki elemeket a fenti
+          listában, és válaszd ki, ki viszi őket.
+        </p>
+        <ul
+          v-else-if="gearAssignments"
+          class="mt-3 space-y-3"
+        >
+          <li
+            v-for="(p, idx) in gearAssignments.participants"
+            :key="(p.user_id ?? 'unassigned') + '-' + idx"
+            class="rounded border border-blushMid-200 bg-white p-3"
+          >
+            <header class="flex items-baseline justify-between">
+              <span class="text-sm font-semibold text-espresso-900">
+                <template v-if="p.user_id">
+                  {{
+                    p.email ??
+                    (p.user_id.slice(0, 8) + '…')
+                  }}
+                </template>
+                <template v-else>
+                  Nincs hozzárendelve
+                </template>
+              </span>
+              <span class="text-xs tabular-nums text-umber-500">
+                {{ p.total_weight_g }} g · {{ p.items.length }} db
+              </span>
+            </header>
+            <ul
+              v-if="p.items.length > 0"
+              class="mt-2 space-y-1 text-xs text-espresso-700"
+            >
+              <li
+                v-for="item in p.items"
+                :key="item.trip_gear_id"
+                class="flex items-baseline justify-between gap-2"
+              >
+                <span class="truncate">
+                  {{ item.name }}
+                  <template v-if="item.category">
+                    · {{ item.category }}
+                  </template>
+                </span>
+                <span class="shrink-0 tabular-nums text-umber-500">
+                  {{ item.weight_g }} g × {{ item.qty }}
+                  ({{ item.total_weight_g }} g)
+                </span>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </section>
 
       <!-- P3.2 — Trip-share invite social surface -->
       <!-- Sorrend (Architect B.2): Résztvevők (minden bejelentkezett user) →

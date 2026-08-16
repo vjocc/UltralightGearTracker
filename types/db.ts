@@ -224,22 +224,30 @@ export type GpxTrackPointInsertPayload = GpxTrackPointInsert &
  * M:N switch table: trips ↔ gear_items.
  * The (trip_id, gear_item_id) pair is unique (composite PK). `quantity`
  * defaults to 1 at the DB layer and is CHECK-constrained to >= 1.
+ *
+ * Sprint 5 P2 — "Ki mit visz" (csoportos csomaglista-egyeztetés):
+ * `assigned_to_user_id` (opcionális, FK auth.users(id) ON DELETE SET NULL)
+ * a trip-szintű user-hozzárendelést tárolja. NULL = az item nincs
+ * userhez rendelve (§11.1 A default).
  */
 export interface TripGearRow {
   trip_id: UUID;
   gear_item_id: UUID;
   quantity: number;
   added_at: string;
+  assigned_to_user_id: UUID | null;
 }
 
 export interface TripGearInsert {
   trip_id: UUID;
   gear_item_id: UUID;
   quantity?: number;
+  assigned_to_user_id?: UUID | null;
 }
 
 export interface TripGearUpdate {
   quantity?: number;
+  assigned_to_user_id?: UUID | null;
 }
 
 /**

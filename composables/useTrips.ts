@@ -37,6 +37,7 @@ import type {
   PhotoPatchInput,
 } from '~/shared/recapSchemas';
 import type { InviteCreateInput } from '~/shared/tripShareSchemas';
+import type { GearAssignmentsResponse } from '~/shared/gearAssignmentSchemas';
 
 export interface TripState {
   items: TripRow[];
@@ -67,6 +68,12 @@ export interface TripState {
    * empty {} shape means the row exists but every text[] is empty.
    */
   debriefByTripId: Record<string, TripDebriefRow | null>;
+  /**
+   * Sprint 5 P2 — "Ki mit visz" aggregált nézet cache, owner-only
+   * (§11.2 A default). Per-trip kulcs, a fetchGearAssignments() tölti a
+   * `GET /api/trips/:id/gear-assignments` endpoint hívással.
+   */
+  gearAssignmentsByTripId: Record<string, GearAssignmentsResponse | null>;
   loading: boolean;
   error: string | null;
 }
@@ -119,6 +126,7 @@ export function useTrips() {
     emailById: {},
     recapByTripId: {},
     debriefByTripId: {},
+    gearAssignmentsByTripId: {},
     loading: false,
     error: null,
   }));
@@ -257,16 +265,27 @@ export function useTrips() {
   };
 
   /**
-   * Updates the quantity on an existing trip_gear row.
+   * Updates the quantity on an existing trip_gear row. Sprint 5 P2 also
+   * accepts `assignedToUserId?: string | null` — a 4. paraméter, ami a
+   * `trip_gear.assigned_to_user_id` mezőt PATCH-eli (NULL = törli a
+   * user-hozzárendelést; UUID = beállítja a §3.2 specifikáció szerinti
+   * owner-only endpoint-on, ahol a target user a trip résztvevőinek
+   * körében kell legyen).
    */
   const updateGearQty = async (
     tripId: string,
     gearItemId: string,
-    quantity: number
+    quantity: number,
+    assignedToUserId?: string | null
   ) => {
     state.value.error = null;
     try {
-      const payload: TripGearUpdateInput = { quantity };
+      const payload: TripGearUpdateInput = {
+        quantity,
+        ...(assignedToUserId !== undefined
+          ? { assigned_to_user_id: assignedToUserId }
+          : {}),
+      };
       const row = await $fetch<TripGearRow>(
         `/api/trips/${tripId}/gear/${gearItemId}`,
         { method: 'PATCH', body: payload }
@@ -276,8 +295,54 @@ export function useTrips() {
           (g) => (g.gear_item_id === gearItemId ? row : g)
         );
       }
+      // P2 — a gear-assignments cache invalidálása, hogy a „Ki mit visz"
+      // nézet a következő mount / re-fetch alkalmával a friss
+      // assigned_to_user_id-t lássa.
+      delete state.value.gearAssignmentsByTripId[tripId];
       return row;
     } catch (e) {
+      setError(e);
+      throw e;
+    }
+  };
+
+  /**
+   * P2 — dedicated assignee-only PATCH a `trip_gear.assigned_to_user_id`
+   * mezőre. A quantity-t NEM érinti. A meglévő updateGearQty() mintát
+   * követi, de csak a user-hozzárendelést PATCH-eli.
+   */
+  const updateGearAssignment = async (
+    tripId: string,
+    gearItemId: string,
+    assignedToUserId: string | null
+  ) => {
+    return updateGearQty(tripId, gearItemId, 1, assignedToUserId);
+  };
+
+  /**
+   * P2 — "Ki mit visz" aggregált nézet betöltése. Owner-only
+   * (§11.2 A default). A szerver-oldali aggregáció userenkénti
+   * csoportosítást ad vissza (§11.3 A default), a `gearAssignmentsByTripId`
+   * cache-be rakja a result-ot.
+   */
+  const fetchGearAssignments = async (
+    tripId: string
+  ): Promise<GearAssignmentsResponse> => {
+    state.value.error = null;
+    try {
+      const response = await $fetch<GearAssignmentsResponse>(
+        `/api/trips/${tripId}/gear-assignments`
+      );
+      state.value.gearAssignmentsByTripId[tripId] = response;
+      return response;
+    } catch (e) {
+      // Owner-only hibák (403/404) ne szennyezzék a state.error-t —
+      // a section v-if gate-e elrejti a nem-owner UI-t.
+      const err = e as { statusCode?: number };
+      if (err?.statusCode === 403 || err?.statusCode === 404) {
+        state.value.gearAssignmentsByTripId[tripId] = null;
+        return { participants: [] };
+      }
       setError(e);
       throw e;
     }
@@ -1188,6 +1253,9 @@ export function useTrips() {
     loadDebrief,
     saveDebrief,
     markTripCompleted,
+    // Sprint 5 P2 — "Ki mit visz"
+    updateGearAssignment,
+    fetchGearAssignments,
     resetError,
   };
 }

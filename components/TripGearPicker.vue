@@ -11,13 +11,28 @@
  * Own-rows-only is enforced server-side by Supabase RLS. The picker
  * is purely a presentation + diff driver; the page owns the
  * useTrips() state and refresh.
+ *
+ * Sprint 5 P2 — owner-only "Ki mit visz" user-selector dropdown
+ * minden trip-gear item sor mellett. A §5.1 spec alapján inline, NEM
+ * új modál (a §0.1 #2 elv: minimális súrlódás). A kiválasztható
+ * user-ek listája: a `participants` prop (owner + accepted invitee-k,
+ * a meglévő TripParticipantRow típusból). A PATCH azonnal megtörténik
+ * (debounce 300 ms) és a useTrips a state.current.trip_gear tömböt
+ * frissíti.
  */
-import type { GearItemRow, CategoryRow, TripWithGear } from '~/types/db';
+import type { GearItemRow, CategoryRow, TripWithGear, TripParticipantRow } from '~/types/db';
 
 const props = defineProps<{
   trip: TripWithGear;
   gear: GearItemRow[];
   categories: CategoryRow[];
+  /** Sprint 5 P2 — owner + accepted invitee-k listája a §0.2 #2 elvhez. */
+  participants?: TripParticipantRow[];
+  /**
+   * Owner-only gate. Ha true, a user-selector dropdown megjelenik
+   * minden gear-item sor mellett. A P2 default (§11.2 A): owner-only.
+   */
+  isOwnerViewer?: boolean;
   submitting?: boolean;
 }>();
 
@@ -29,6 +44,15 @@ const emit = defineEmits<{
       update: Array<{ gear_item_id: string; quantity: number }>;
       remove: string[];
     }
+  ): void;
+  /**
+   * Sprint 5 P2 — owner-only user-hozzárendelés PATCH. A page-en
+   * keresztül megy az updateGearAssignment composable metódusra,
+   * ami a PATCH /api/trips/:id/gear/:gearId endpoint-ot hívja.
+   */
+  (
+    e: 'assign',
+    payload: { gear_item_id: string; assigned_to_user_id: string | null }
   ): void;
 }>();
 
@@ -121,6 +145,38 @@ const handleSave = () => {
 
   emit('save', { add, update, remove });
 };
+
+// ---------------------------------------------------------------------------
+// Sprint 5 P2 — "Ki mit visz" user-hozzárendelés (owner-only inline dropdown)
+// ---------------------------------------------------------------------------
+/**
+ * Lookup a `trip.trip_gear` sor `assigned_to_user_id`-ja alapján.
+ * A read-only label és a dropdown value is ezt használja (a reaktivitás
+ * biztosítja, hogy a PATCH után azonnal újra-rendereljen a sor).
+ */
+const assignedTo = (gearItemId: string): string | null | undefined => {
+  const row = props.trip.trip_gear.find((tg) => tg.gear_item_id === gearItemId);
+  return row?.assigned_to_user_id;
+};
+
+const assignedEmail = (gearItemId: string): string | null => {
+  const uid = assignedTo(gearItemId);
+  if (!uid) return null;
+  const p = (props.participants ?? []).find((row) => row.user_id === uid);
+  return p?.email ?? null;
+};
+
+/**
+ * A user-selector value kezelése. Az owner kiválaszt egy user-t a
+ * legördülő listából, vagy törli a hozzárendelést ("" → null).
+ * A PATCH-et a parent-en (pages/trips/[id].vue) keresztül az
+ * `updateGearAssignment` composable metódus végzi.
+ */
+const onAssignSelect = (gearItemId: string, userId: string) => {
+  // "" = "Hozzárendelés törlése" opció (NULL).
+  const next: string | null = userId === '' ? null : userId;
+  emit('assign', { gear_item_id: gearItemId, assigned_to_user_id: next });
+};
 </script>
 
 <template>
@@ -154,35 +210,79 @@ const handleSave = () => {
                 {{ categoryById.get(g.category_id)?.name }} ·
               </span>
               <span class="tabular-nums">{{ g.weight_g }} g</span>
+              <!--
+                Sprint 5 P2 — read-only "Hozzárendelve: …" label.
+                Minden viewer számára látható (a §5.1 spec szerint), de
+                a szerkesztés csak owner-only.
+              -->
+              <span
+                v-if="draft[g.id]?.checked && assignedTo(g.id)"
+                class="ml-2 rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700"
+              >
+                {{ assignedEmail(g.id) ?? assignedTo(g.id)?.slice(0, 8) + '…' }}
+              </span>
+              <span
+                v-else-if="draft[g.id]?.checked"
+                class="ml-2 rounded border border-dashed border-gray-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500"
+              >
+                Nincs hozzárendelve
+              </span>
             </span>
           </label>
         </div>
 
-        <div
-          v-if="draft[g.id]?.checked"
-          class="flex shrink-0 items-center gap-1"
-        >
-          <button
-            type="button"
-            class="btn-secondary px-2 py-0.5 text-xs"
-            aria-label="Mennyiség csökkentése"
-            :disabled="draft[g.id].quantity <= 1"
-            @click="decrement(g.id)"
+        <div class="flex shrink-0 items-center gap-2">
+          <!--
+            Sprint 5 P2 — owner-only user-selector dropdown. Csak ha
+            (a) az item be van jelölve ÉS (b) az viewer a trip owner-e.
+            A kiválasztható user-ek listája: a `participants` prop
+            (owner + accepted invitee-k). A "" opció a "Hozzárendelés
+            törlése" (NULL).
+          -->
+          <select
+            v-if="draft[g.id]?.checked && isOwnerViewer && (participants?.length ?? 0) > 0"
+            :value="assignedTo(g.id) ?? ''"
+            class="rounded border border-gray-300 bg-white px-1.5 py-1 text-xs text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            :aria-label="`Hozzárendelés: ${g.name}`"
+            @change="(e) => onAssignSelect(g.id, (e.target as HTMLSelectElement).value)"
           >
-            −
-          </button>
-          <span class="w-8 text-center text-sm tabular-nums">
-            {{ draft[g.id].quantity }}
-          </span>
-          <button
-            type="button"
-            class="btn-secondary px-2 py-0.5 text-xs"
-            aria-label="Mennyiség növelése"
-            :disabled="draft[g.id].quantity >= 99"
-            @click="increment(g.id)"
+            <option value="">Hozzárendelés törlése</option>
+            <option
+              v-for="p in participants ?? []"
+              :key="p.user_id"
+              :value="p.user_id"
+            >
+              {{ p.email ?? (p.user_id.slice(0, 8) + '…') }}
+              <template v-if="p.role === 'owner'">(tulajdonos)</template>
+            </option>
+          </select>
+
+          <div
+            v-if="draft[g.id]?.checked"
+            class="flex items-center gap-1"
           >
-            +
-          </button>
+            <button
+              type="button"
+              class="btn-secondary px-2 py-0.5 text-xs"
+              aria-label="Mennyiség csökkentése"
+              :disabled="draft[g.id].quantity <= 1"
+              @click="decrement(g.id)"
+            >
+              −
+            </button>
+            <span class="w-8 text-center text-sm tabular-nums">
+              {{ draft[g.id].quantity }}
+            </span>
+            <button
+              type="button"
+              class="btn-secondary px-2 py-0.5 text-xs"
+              aria-label="Mennyiség növelése"
+              :disabled="draft[g.id].quantity >= 99"
+              @click="increment(g.id)"
+            >
+              +
+            </button>
+          </div>
         </div>
       </li>
     </ul>
