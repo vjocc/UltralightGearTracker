@@ -415,6 +415,43 @@ export interface TripDebriefUpsert {
 }
 
 /**
+ * P0.3 — Activation funnel event log (saját events tábla, B opció).
+ * Append-only event store; service-role INSERT only (BYPASSRLS).
+ * lásd:
+ *   - supabase/migrations/20260816000001_funnel_events.sql
+ *   - docs/sprint-5-p0-product-loop.md §4.4 (b) ág
+ */
+export interface FunnelEventRow {
+  id: UUID;
+  user_id: UUID;
+  /**
+   * Sávszélesség-takarékos zod-enum (6 érték). A migráció
+   * CHECK constraint defense-in-depth, a szerver-oldali zod
+   * schema a primary gate.
+   */
+  event_name:
+    | 'signup_completed'
+    | 'first_gear_added'
+    | 'first_trip_created'
+    | 'first_loadout_assembled'
+    | 'first_completed_trip'
+    | 'first_debrief_written';
+  /** Event-specifikus metaadat (pl. signup forrása, trip_id). */
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+/**
+ * Insert payload a `funnel_events` táblához. A user_id-t a
+ * service-role client tölti (a user-JWT-ből), NEM a kliens.
+ */
+export interface FunnelEventInsert {
+  user_id: UUID;
+  event_name: FunnelEventRow['event_name'];
+  payload?: Record<string, unknown>;
+}
+
+/**
  * Trip recap row (see supabase/migrations/20260813140000_trip_recap.sql).
  * One row per trip (`unique (trip_id)`) carrying the post-trip
  * élménybeszámoló body, a 0..10 satisfaction rating, and a public privacy
@@ -746,6 +783,7 @@ export interface Database {
       public_lists: TableShape<PublicListRow>;
       trip_recap_photos: TableShape<TripRecapPhotoRow>;
       trip_debriefs: TableShape<TripDebriefRow>;
+      funnel_events: TableShape<FunnelEventRow>;
     };
     Views: {
       gear_base_weights_view: ViewShape<GearBaseWeightRow>;

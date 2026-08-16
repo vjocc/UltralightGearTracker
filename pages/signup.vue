@@ -15,6 +15,11 @@ const route = useRoute();
 const router = useRouter();
 const user = useSupabaseUser();
 const supabase = useSupabaseClient();
+// P0.3 — activation funnel: signup_completed capture (Sprint 5
+// P0.3, B opció: saját events tábla). A first_* guard a
+// composable-ban van (useState flag); a szerver-oldali endpoint
+// (/api/events/track) idempotens.
+const { trackEvent } = useFunnelEvents();
 
 const nextPath = computed(() => {
   const raw = route.query.next;
