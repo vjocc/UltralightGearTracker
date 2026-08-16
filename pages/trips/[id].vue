@@ -1199,7 +1199,7 @@ onMounted(async () => {
            user_id = null bucket ("Nincs hozzárendelve") a lista
            végén jelenik meg. -->
       <section
-        v-if="isTripOwner"
+        v-if="canViewRecap(state.current, user.value.id)"
         class="rounded-card border border-blushMid-200 bg-blushLight-50 p-4 shadow-[0_1px_0_rgba(90,69,40,0.04)]"
         aria-label="Ki mit visz"
       >
