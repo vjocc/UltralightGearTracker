@@ -28,17 +28,27 @@ const emit = defineEmits<{
       description: string | null;
       start_date: string | null;
       end_date: string | null;
+      // Sprint 5 P1 — Community Routes. visibility + region +
+      // region_source a /discover listinghez. region_source a
+      // komponens automatikusan tölti: 'manual' ha van region,
+      // egyébként NULL.
+      visibility: 'private' | 'public';
+      region: string | null;
+      region_source: 'manual' | 'gpx_derived' | null;
     }
   ): void;
 }>();
 
-// Form state — description + dates use '' to represent blank; submit
-// coerces '' → null so the DB column gets NULL, not ''.
+// Form state — description + dates + region use '' to represent blank;
+// submit coerces '' → null so the DB column gets NULL, not ''.
 const form = reactive<TripFormShape>({
   name: '',
   description: '',
   start_date: '',
   end_date: '',
+  // Sprint 5 P1 — defaults: private (user opt-in), no region.
+  visibility: 'private',
+  region: '',
 });
 
 const fieldErrors = ref<Record<string, string>>({});
@@ -50,6 +60,12 @@ const resetForm = () => {
   form.description = props.item?.description ?? '';
   form.start_date = props.item?.start_date ?? '';
   form.end_date = props.item?.end_date ?? '';
+  // Sprint 5 P1 — visibility + region init from existing row, defaults
+  // when the row is fresh / undefined.
+  form.visibility = (props.item?.visibility ?? 'private') as
+    | 'private'
+    | 'public';
+  form.region = props.item?.region ?? '';
   fieldErrors.value = {};
 };
 
@@ -63,11 +79,19 @@ watch(
 
 const buildPayload = () => {
   const trimToNull = (v: string): string | null => (v.trim() === '' ? null : v.trim());
+  const trimmedRegion = form.region.trim();
+  // Sprint 5 P1 — region_source automatikusan: 'manual' ha van region,
+  // egyébként NULL. A 'gpx_derived' a P3+ GPX pipeline-ból jön, nem a
+  // user-formból.
+  const regionSource: 'manual' | null = trimmedRegion ? 'manual' : null;
   return {
     name: form.name.trim(),
     description: trimToNull(form.description),
     start_date: trimToNull(form.start_date),
     end_date: trimToNull(form.end_date),
+    visibility: form.visibility,
+    region: trimmedRegion ? trimmedRegion : null,
+    region_source: regionSource,
   };
 };
 
@@ -231,6 +255,60 @@ onBeforeUnmount(() => {
               />
               <p v-if="issueFor('end_date')" class="mt-1 text-xs text-red-600">
                 {{ fieldError('end_date') || issueFor('end_date') }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Sprint 5 P1 — Community Routes ("Felfedezés a régióban").
+               A visibility toggle a user-opt-in kapcsoló, a region
+               input a listázás csoportosítási kulcsa. MemoFox voice:
+               halvány (espresso-200 border, blushLight-50 helper),
+               leíró. -->
+          <div class="space-y-3 rounded-card border border-espresso-200 bg-blushLight-50/60 p-3">
+            <div class="flex items-start gap-3">
+              <input
+                id="trip-visibility"
+                v-model="form.visibility"
+                type="checkbox"
+                class="mt-1 h-4 w-4 rounded border-espresso-300 text-moss-600 focus:ring-moss-600"
+                :true-value="'public'"
+                :false-value="'private'"
+              />
+              <div class="flex-1">
+                <label
+                  for="trip-visibility"
+                  class="block text-sm font-medium text-espresso-900"
+                >
+                  Publikus a „Felfedezés a régióban" listában
+                </label>
+                <p class="mt-1 text-xs text-espresso-700">
+                  Publikus trip megjelenik a közösségi listában. A régió-tag
+                  opcionális — ha nem adod meg, a „Egyéb" blokkba kerül.
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label
+                for="trip-region"
+                class="block text-sm font-medium text-espresso-900"
+              >
+                Régió <span class="font-normal text-espresso-700">(opcionális)</span>
+              </label>
+              <input
+                id="trip-region"
+                v-model="form.region"
+                type="text"
+                maxlength="80"
+                placeholder="Pl. Bükk, Magas-Tátra, Pireneusok"
+                autocomplete="off"
+                class="input mt-1"
+              />
+              <p class="mt-1 text-xs text-espresso-700">
+                A régió a listán a csoportosítás alapja.
+              </p>
+              <p v-if="issueFor('region')" class="mt-1 text-xs text-red-600">
+                {{ fieldError('region') || issueFor('region') }}
               </p>
             </div>
           </div>

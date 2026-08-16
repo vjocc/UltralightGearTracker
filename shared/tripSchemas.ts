@@ -31,6 +31,15 @@ export const tripBaseSchema = z.object({
   description: z.string().max(2000, 'Max 2000 characters').optional().nullable(),
   start_date: z.string().date('Use YYYY-MM-DD').optional().nullable(),
   end_date: z.string().date('Use YYYY-MM-DD').optional().nullable(),
+  // Sprint 5 P1 — Community Routes ("Felfedezés a régióban"):
+  // visibility toggles the trip into the public /discover page (§11.1
+  // MANUAL region, §11.2 régiónkénti ABC). Default private (user opt-in).
+  visibility: z.enum(['private', 'public']).default('private'),
+  region: z.string().max(80, 'Max 80 characters').optional().nullable(),
+  region_source: z
+    .enum(['manual', 'gpx_derived'])
+    .optional()
+    .nullable(),
 });
 
 export const tripCreateSchema = tripBaseSchema.superRefine((d, ctx) => {
@@ -78,4 +87,10 @@ export interface TripFormShape {
   description: string;
   start_date: string;
   end_date: string;
+  // Sprint 5 P1 — Community Routes. visibility toggle (default 'private'),
+  // free-text region (max 80 char). region_source a submit-on tölti a
+  // komponens, nem form-state (form-on mindig 'manual' ha van region,
+  // egyébként NULL).
+  visibility: 'private' | 'public';
+  region: string;
 }

@@ -53,6 +53,20 @@ const dateLabel = computed(() => {
         >
           {{ gearCount }} gear
         </span>
+        <!-- Sprint 5 P1 — Community Routes. Owner-only badge: a user
+             saját listáján látja, hogy a trip publikus-e. Mások listáján
+             (barátok megosztott tripjei) a badge rejtve marad — a
+             privacy-first alapelv. -->
+        <span
+          v-if="isOwnerViewer && trip.visibility === 'public'"
+          class="inline-flex items-center rounded border border-moss-200 bg-moss-50 px-2 py-0.5 text-xs font-medium text-moss-800"
+          :title="trip.region ? `Publikus · ${trip.region}` : 'Publikus'"
+        >
+          Publikus
+          <span v-if="trip.region" class="ml-1 text-moss-700">
+            · {{ trip.region }}
+          </span>
+        </span>
       </div>
       <dl class="mt-1 flex flex-wrap gap-x-4 text-xs text-gray-500">
         <div>

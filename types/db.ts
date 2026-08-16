@@ -112,6 +112,25 @@ export interface TripRow {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  /**
+   * Sprint 5 P1 — Community Routes ("Felfedezés a régióban").
+   * visibility toggles a trip into the public /discover listing.
+   * Default 'private' — user-opt-in via TripFormModal toggle.
+   * See migration 20260817000000_trips_visibility_region.sql.
+   */
+  visibility: 'private' | 'public';
+  /**
+   * Manual region tag (szabad szöveg, max 80 char), user írja be a
+   * TripFormModal-on (§11.1 MANUAL döntés). NULL = user még nem töltötte.
+   * A /discover listaoldal a régió-blokkok kulcsa.
+   */
+  region: string | null;
+  /**
+   * A region mező eredete. 'manual' = user írta be, 'gpx_derived' =
+   * GPX-ből származtatva (P3+ scope, jelenleg 'manual' az egyetlen aktív).
+   * NULL = a region mező is NULL (user még nem állított be régiót).
+   */
+  region_source: 'manual' | 'gpx_derived' | null;
 }
 
 export interface TripInsert {
@@ -119,6 +138,10 @@ export interface TripInsert {
   description?: string | null;
   start_date?: string | null;
   end_date?: string | null;
+  // Sprint 5 P1: visibility + region + region_source a /discover listinghez.
+  visibility?: 'private' | 'public';
+  region?: string | null;
+  region_source?: 'manual' | 'gpx_derived' | null;
 }
 
 export interface TripUpdate {
@@ -126,6 +149,10 @@ export interface TripUpdate {
   description?: string | null;
   start_date?: string | null;
   end_date?: string | null;
+  // Sprint 5 P1: visibility + region + region_source a /discover listinghez.
+  visibility?: 'private' | 'public';
+  region?: string | null;
+  region_source?: 'manual' | 'gpx_derived' | null;
 }
 
 /**

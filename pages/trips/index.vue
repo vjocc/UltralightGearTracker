@@ -63,6 +63,12 @@ const handleSubmit = async (payload: {
   description: string | null;
   start_date: string | null;
   end_date: string | null;
+  // Sprint 5 P1 — Community Routes. visibility + region + region_source
+  // a /discover listinghez. A TripFormModal küldi, a useTrips.create /
+  // .update payload-ba továbbítjuk.
+  visibility: 'private' | 'public';
+  region: string | null;
+  region_source: 'manual' | 'gpx_derived' | null;
 }) => {
   submitting.value = true;
   try {

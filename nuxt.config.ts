@@ -75,6 +75,13 @@ export default defineNuxtConfig({
         // exclude patterns with `^${pattern.replace(/\*/g, ".*")}$`
         // — `/list/*` therefore matches `/list/{anything}` exactly.
         '/list/*',
+        // Sprint 5 P1 — Community Routes ("Felfedezés a régióban"):
+        // /discover is the public listing page. Anonymous visitors
+        // see only trips with visibility = 'public' (service-role
+        // endpoint, see server/api/discover/index.get.ts). Adding
+        // /discover to the exclude list keeps the @nuxtjs/supabase
+        // middleware from interfering with the anonymous read path.
+        '/discover',
       ],
       include: ['/gear', '/wishlist', '/trips', '/settings'],
     },

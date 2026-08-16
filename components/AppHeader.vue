@@ -95,6 +95,17 @@ const handleSignOut = async () => {
           >
             Trips
           </NuxtLink>
+          <!-- Sprint 5 P1 — Community Routes. Public Discover link
+               visible to all users (anonymous AND authenticated),
+               so visitors who haven't signed up can preview the
+               community listing too. §11.3 A opció: "Felfedezés a
+               régióban" — the link label keeps the descriptive voice. -->
+          <NuxtLink
+            to="/discover"
+            class="rounded px-2 py-1 font-medium text-gray-700 hover:bg-gray-100"
+          >
+            Felfedezés
+          </NuxtLink>
           <NuxtLink
             to="/friends"
             class="rounded px-2 py-1 font-medium text-gray-700 hover:bg-gray-100"
