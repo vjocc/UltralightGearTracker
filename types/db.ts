@@ -834,6 +834,28 @@ export interface Database {
         Args: { p_share_token: string };
         Returns: Array<{ owner_user_id: string }>;
       };
+      /**
+       * Sprint 5 P1.x: discover_public_trips() — defense-in-depth public
+       * listing for /api/discover. No args; returns 9-column privacy-first
+       * projection (id, name, description, start_date, end_date, region,
+       * region_source, distance_km, elevation_gain_m). Typed here under
+       * vue-tsc strict mode so the /api/discover endpoint can call
+       * supabase.rpc('discover_public_trips') without a type error.
+       */
+      discover_public_trips: {
+        Args: Record<string, never>;
+        Returns: Array<{
+          id: string;
+          name: string;
+          description: string | null;
+          start_date: string | null;
+          end_date: string | null;
+          region: string | null;
+          region_source: string | null;
+          distance_km: number | null;
+          elevation_gain_m: number | null;
+        }>;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
