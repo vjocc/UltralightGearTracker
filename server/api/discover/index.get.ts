@@ -63,16 +63,14 @@ type RawTripRow = {
 export default defineEventHandler(async (event): Promise<DiscoverResponse> => {
   const supabase = getServiceRoleClient();
 
-  // Explicit SELECT — never SELECT *. region_source is included so the
-  // page can later distinguish manual vs gpx-derived entries (currently
-  // the gpx_derived branch is unused because no GPX pipeline writes it).
-  const { data, error } = await supabase
-    .from('trips')
-    .select(
-      'id, name, description, start_date, end_date, region, region_source, gpx_metadata',
-    )
-    .eq('visibility', 'public')
-    .order('name', { ascending: true });
+  // Sprint 5 P1.x defense-in-depth: the public projection goes through
+  // the `discover_public_trips()` SECURITY DEFINER RPC (see
+  // supabase/migrations/20260818000000_discover_public_trips_rpc.sql).
+  // The function hard-codes WHERE visibility = 'public' AND a 9-column
+  // privacy-first SELECT list (no user_id, no email, no timestamps, no
+  // gpx_metadata.trackpoints). ORDER BY t.name asc is built into the
+  // function body too.
+  const { data, error } = await supabase.rpc('discover_public_trips');
 
   if (error) {
     throw createError({
