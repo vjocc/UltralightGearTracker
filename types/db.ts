@@ -841,17 +841,10 @@ export interface Database {
       public_list_lookup: {
         Args: { p_share_token: string };
         Returns: Array<{ owner_user_id: string }>;
-      };
-      /**
-       * Sprint 5 P1.x: discover_public_trips() — defense-in-depth public
-       * listing for /api/discover. No args; returns 9-column privacy-first
-       * projection (id, name, description, start_date, end_date, region,
-       * region_source, distance_km, elevation_gain_m). Typed here under
-       * vue-tsc strict mode so the /api/discover endpoint can call
-       * supabase.rpc('discover_public_trips') without a type error.
-       */
+      }
+      // Sprint 5 P1.x — /discover public listing RPC (defense-in-depth).
       discover_public_trips: {
-        Args: Record<string, never>;
+        Args: Record<PropertyKey, never>;
         Returns: Array<{
           id: string;
           name: string;
@@ -863,7 +856,17 @@ export interface Database {
           distance_km: number | null;
           elevation_gain_m: number | null;
         }>;
-      };
+      }
+      // Sprint 5 P2 — "Ki mit visz" visibility gate RPC.
+      trip_visible_to: {
+        Args: { p_trip_id: string };
+        Returns: boolean;
+      }
+      // Sprint 5 P2 — trip-participant email lookup RPC (SECURITY DEFINER).
+      trip_participant_lookup_emails: {
+        Args: { p_user_ids: string[]; p_trip_id: string };
+        Returns: Array<{ user_id: string; email: string }>;
+      }
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
