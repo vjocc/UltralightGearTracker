@@ -395,6 +395,14 @@ export interface TripParticipantRow {
   id: 'owner' | UUID;
   user_id: UUID;
   email: string | null;
+  /**
+   * Sprint 5 P2.x bugfix — privacy-first display_name (a
+   * `trip_participant_lookup_profiles` SECURITY DEFINER function-ből
+   * jön). A kliens oldali `formatDisplayName` helper a 'Névtelen
+   * túrázó' fallback-et alkalmazza placeholder-re.
+   */
+  display_name: string | null;
+  avatar_url: string | null;
   role: 'owner' | 'invitee';
   /** Always `'accepted'` — pending invites are surfaced via the banner instead. */
   status: 'accepted';
@@ -844,27 +852,7 @@ export interface Database {
        * policies). Insert/Update során a display_name 1-50 char trim,
        * NOT NULL.
        */
-      profiles: {
-        Row: {
-          id: UUID;
-          display_name: string;
-          avatar_url: string | null;
-          bio: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id: UUID;
-          display_name: string;
-          avatar_url?: string | null;
-          bio?: string | null;
-        };
-        Update: {
-          display_name?: string;
-          avatar_url?: string | null;
-          bio?: string | null;
-        };
-      };
+      profiles: TableShape<ProfileRow>;
     };
     Views: {
       gear_base_weights_view: ViewShape<GearBaseWeightRow>;
