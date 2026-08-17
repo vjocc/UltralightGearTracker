@@ -1241,8 +1241,9 @@ onMounted(async () => {
               <span class="text-sm font-semibold text-espresso-900">
                 <template v-if="p.user_id">
                   {{
-                    p.email ??
-                    (p.user_id.slice(0, 8) + '…')
+                    p.display_name
+                      ? formatDisplayName(p.display_name)
+                      : (p.email ?? (p.user_id.slice(0, 8) + '…'))
                   }}
                 </template>
                 <template v-else>

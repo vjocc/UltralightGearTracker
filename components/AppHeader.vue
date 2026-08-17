@@ -112,6 +112,16 @@ const handleSignOut = async () => {
           >
             Friends
           </NuxtLink>
+          <!-- Sprint 5 P2.x — Profil / Beállítások. A user itt tudja
+               megadni/módosítani a keresztnevét (display_name) — a
+               'Névtelen túrázó' placeholder-t itt írhatja felül a
+               valódi nevére. -->
+          <NuxtLink
+            to="/profile"
+            class="rounded px-2 py-1 font-medium text-gray-700 hover:bg-gray-100"
+          >
+            Profil
+          </NuxtLink>
           <NuxtLink
             to="/stats"
             class="rounded px-2 py-1 font-medium text-gray-700 hover:bg-gray-100"

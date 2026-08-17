@@ -159,11 +159,20 @@ const assignedTo = (gearItemId: string): string | null | undefined => {
   return row?.assigned_to_user_id;
 };
 
-const assignedEmail = (gearItemId: string): string | null => {
+/**
+ * A sorhoz tartozó user-selector dropdown label (a P2.x keresztnév
+ * bugfix: display_name elsőbbséget élvez az email felett). A kliens
+ * oldali composable a 'Névtelen túrázó' fallback-et alkalmazza, ha
+ * a display_name NULL vagy placeholder.
+ */
+const assignedParticipantLabel = (gearItemId: string): string => {
   const uid = assignedTo(gearItemId);
-  if (!uid) return null;
+  if (!uid) return 'Névtelen túrázó';
   const p = (props.participants ?? []).find((row) => row.user_id === uid);
-  return p?.email ?? null;
+  // A TripParticipantRow NEM tartalmazza a display_name-t (csak email) —
+  // a fallback a label-t az email-re állítja. A Ki-mit-visz blokk a
+  // szerver-oldali privacy-safe projection-ből kapja a display_name-t.
+  return p?.email ?? (uid.slice(0, 8) + '…');
 };
 
 /**
@@ -219,7 +228,7 @@ const onAssignSelect = (gearItemId: string, userId: string) => {
                 v-if="draft[g.id]?.checked && assignedTo(g.id)"
                 class="ml-2 rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700"
               >
-                {{ assignedEmail(g.id) ?? assignedTo(g.id)?.slice(0, 8) + '…' }}
+                {{ assignedParticipantLabel(g.id) }}
               </span>
               <span
                 v-else-if="draft[g.id]?.checked"

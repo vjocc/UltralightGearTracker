@@ -107,10 +107,14 @@ export default defineEventHandler(async (event) => {
     (r) => r.assigned_to_user_id !== null,
   );
 
-  // user_id → { email, items[] } aggregátum
+  // user_id → { email, display_name, avatar_url, items[] } aggregátum
+  // A P2.x keresztnév bugfix bővítés: display_name + avatar_url mezők a
+  // privacy-safe projection-ből (trip_participant_lookup_profiles).
   interface AggBucket {
     user_id: string | null;
     email: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
     total_weight_g: number;
     items: Array<{
       trip_gear_id: string;
@@ -126,6 +130,8 @@ export default defineEventHandler(async (event) => {
   const nullBucket: AggBucket = {
     user_id: null,
     email: null,
+    display_name: null,
+    avatar_url: null,
     total_weight_g: 0,
     items: [],
   };
@@ -158,6 +164,8 @@ export default defineEventHandler(async (event) => {
       bucket = {
         user_id: uid,
         email: null,
+        display_name: null,
+        avatar_url: null,
         total_weight_g: 0,
         items: [],
       };
@@ -211,6 +219,45 @@ export default defineEventHandler(async (event) => {
       }
       for (const [uid, bucket] of byUser) {
         bucket.email = emailById.get(uid) ?? null;
+      }
+    }
+
+    // (5b) Profile lookup (P2.x keresztnév bugfix): a dedikált
+    // trip_participant_lookup_profiles(p_user_ids, p_trip_id) SECURITY
+    // DEFINER function a privacy-safe projection-t adja vissza
+    // (display_name + avatar_url, email és bio NEM). A function a
+    // Phase 3 §28 double-gate mintát követi: a service-role hívás
+    // BYPASSRLS, a function belsejében van a privacy gate
+    // (owner + accepted invitee).
+    const { data: profileRows, error: rpcProfileErr } = await (service.rpc as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: unknown; error: unknown }>)(
+      'trip_participant_lookup_profiles',
+      { p_user_ids: userIds, p_trip_id: tripId },
+    );
+    if (rpcProfileErr) {
+      // A profile-lookup nem kritikus (a kliens oldali composable a
+      // 'Névtelen túrázó' fallback-et alkalmazza). A user_id marad
+      // látható, csak a display_name + avatar_url marad null.
+      // eslint-disable-next-line no-console
+      console.warn('trip_participant_lookup_profiles failed', rpcProfileErr);
+    } else {
+      const profileById = new Map<string, { display_name: string | null; avatar_url: string | null }>();
+      for (const row of (profileRows ?? []) as unknown as Array<{
+        user_id: string;
+        display_name: string | null;
+        avatar_url: string | null;
+      }>) {
+        profileById.set(row.user_id, {
+          display_name: row.display_name ?? null,
+          avatar_url: row.avatar_url ?? null,
+        });
+      }
+      for (const [uid, bucket] of byUser) {
+        const p = profileById.get(uid);
+        bucket.display_name = p?.display_name ?? null;
+        bucket.avatar_url = p?.avatar_url ?? null;
       }
     }
   }

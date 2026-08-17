@@ -20,6 +20,23 @@ export interface GearComfort {
   weight?: number;  // 1..5
 }
 
+/**
+ * Sprint 5 P2.x — public.profiles tábla (lásd
+ * supabase/migrations/20260817000000_profiles_table.sql). A display_name
+ * NOT NULL + 1..50 char CHECK, a tábla a signup trigger-ből kapja a
+ * 'Névtelen túrázó' default-ot. A privacy-safe projection
+ * (más user-ek által olvasható rekord) a display_name + avatar_url +
+ * user_id + updated_at mezőket tartalmazza; email és bio NEM.
+ */
+export interface ProfileRow {
+  id: UUID;
+  display_name: string;
+  avatar_url: string | null;
+  bio: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CategoryRow {
   id: UUID;
   name: string;

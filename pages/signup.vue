@@ -38,6 +38,8 @@ watchEffect(() => {
 const email = ref('');
 const password = ref('');
 const confirmPassword = ref('');
+// P2.x bugfix — kötelező keresztnév a regisztrációnál
+const displayName = ref('');
 const showPassword = ref(false);
 const submitting = ref(false);
 const signedUp = ref(false);
@@ -48,12 +50,21 @@ const passwordTooShort = computed(() => password.value.length > 0 && password.va
 const passwordsMismatch = computed(
   () => confirmPassword.value.length > 0 && password.value !== confirmPassword.value,
 );
+// P2.x bugfix — keresztnév validáció (1-50 char trim után)
+const displayNameTooShort = computed(() => {
+  const trimmed = displayName.value.trim();
+  return trimmed.length > 0 && trimmed.length < 1; // trim után < 1 → túl rövid (whitespace-only)
+});
+const displayNameTooLong = computed(() => displayName.value.trim().length > 50);
+const displayNameEmpty = computed(() => displayName.value.trim().length === 0);
 
 const canSubmit = computed(
   () =>
     email.value.trim().length > 0 &&
     password.value.length >= 8 &&
     password.value === confirmPassword.value &&
+    displayName.value.trim().length >= 1 &&
+    displayName.value.trim().length <= 50 &&
     !submitting.value,
 );
 
@@ -70,6 +81,16 @@ const signUp = async () => {
     errorMessage.value = 'A két jelszó nem egyezik.';
     return;
   }
+  // P2.x bugfix — keresztnév kötelező validáció
+  const trimmedDisplayName = displayName.value.trim();
+  if (trimmedDisplayName.length === 0) {
+    errorMessage.value = 'Add meg a keresztneved (1-50 karakter).';
+    return;
+  }
+  if (trimmedDisplayName.length > 50) {
+    errorMessage.value = 'A keresztnév maximum 50 karakter lehet.';
+    return;
+  }
   errorMessage.value = null;
   submitting.value = true;
   try {
@@ -77,6 +98,8 @@ const signUp = async () => {
       email: email.value.trim(),
       password: password.value,
       options: {
+        // P2.x bugfix — display_name átadása user_metadata-ban
+        data: { display_name: trimmedDisplayName },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
@@ -166,6 +189,50 @@ const mapAuthError = (raw: string): string => {
           class="input"
           placeholder="te@pelda.hu"
         />
+      </div>
+
+      <!--
+        P2.x bugfix — kötelező Keresztnév input a regisztrációnál.
+        A migration (20260817000000_profiles_table.sql) biztosítja, hogy a
+        profiles tábla INSERT trigger-elve van auth.users INSERT-re, és a
+        backfill a meglévő usereket 'Névtelen túrázó' placeholder-rel
+        tölti fel. Az új regisztrációkor a display_name a user_metadata-
+        ban tárolódik, és a Supabase trigger automatikusan INSERT-eli a
+        profiles táblába.
+      -->
+      <div>
+        <label for="signup-displayname" class="block text-sm font-medium text-gray-700">
+          Keresztnév <span class="text-xs font-normal text-red-500">*</span>
+        </label>
+        <input
+          id="signup-displayname"
+          v-model="displayName"
+          type="text"
+          autocomplete="given-name"
+          maxlength="50"
+          required
+          class="input"
+          placeholder="pl. Anna"
+          :aria-invalid="displayNameEmpty || displayNameTooLong"
+        />
+        <p
+          v-if="displayNameEmpty"
+          class="mt-1 text-xs text-amber-700"
+        >
+          Add meg a keresztneved (1-50 karakter).
+        </p>
+        <p
+          v-else-if="displayNameTooLong"
+          class="mt-1 text-xs text-amber-700"
+        >
+          A keresztnév maximum 50 karakter lehet ({{ displayName.trim().length }} / 50).
+        </p>
+        <p
+          v-else
+          class="mt-1 text-xs text-gray-500"
+        >
+          Megjelenik a trip-résztvevők listáján és a „Ki mit visz" nézetben.
+        </p>
       </div>
 
       <div>

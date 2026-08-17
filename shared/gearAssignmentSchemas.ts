@@ -41,6 +41,19 @@ export const gearAssignmentParticipantSchema = z.object({
    * vagy ha a user_id = null a participant-rész.
    */
   email: z.string().nullable(),
+  /**
+   * Display name (a trip_participant_lookup_profiles SECURITY DEFINER
+   * function adja vissza — P2.x keresztnév bugfix). NULL a user_id =
+   * null bucketben. A kliens oldali composable a "Névtelen túrázó"
+   * fallback-et alkalmazza, ha a string === "Névtelen túrázó" (a
+   * backfill migration placeholder), vagy ha NULL.
+   */
+  display_name: z.string().nullable(),
+  /**
+   * Avatar URL (privacy-safe projection). NULL ha a user nem töltött
+   * fel avatar-t, vagy a user_id = null bucket.
+   */
+  avatar_url: z.string().nullable(),
   /** Item-level aggregált súly (gramm), a participant items tömbjéből. */
   total_weight_g: z.number().nonnegative(),
   items: z.array(assignedGearItemSchema),
