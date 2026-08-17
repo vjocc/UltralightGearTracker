@@ -27,14 +27,10 @@ import { profileUpdateSchema } from '~/shared/profileSchemas';
 export default defineEventHandler(async (event) => {
   const user = await serverSupabaseUser(event);
 
-  // ── DIAGNOSTIC: a session user context ────────────────────────────────
-  // A user.id a getClaims() output-ból jön (auth.users.id). Ha a sub
-  // mező NULL, a getClaims() NEM a request JWT-t olvassa (valószínűleg
-  // service-role fallback). Ha a user.id user-JWT-vel jön, de az INSERT
-  // mégis policy violation-t ad, a supabase client inicializálás a
-  // hibás.
+  // ── DIAGNOSTIC #2: TELJES user obj dump (user reported user.id is
+  // undefined but user exists: true → property name confusion) ─────────
   // eslint-disable-next-line no-console
-  console.log('[DIAG] user.id:', user?.id, 'user exists:', !!user);
+  console.log('[DIAG] user:', JSON.stringify(user));
 
   if (!user) {
     throw createError({
