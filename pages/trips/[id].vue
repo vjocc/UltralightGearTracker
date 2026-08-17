@@ -75,6 +75,17 @@ const { state: gearState, list: listGear } = useGear();
 const { state: catState, list: listCategories } = useCategories();
 
 const user = useSessionUser();
+// Sprint 5 P2.x bugfix — privacy-first display_name formatter.
+// A 'Névtelen túrázó' fallback-et alkalmazza, ha a display_name
+// placeholder vagy hiányzik. A user_id-t nem mutatjuk soha más user
+// felé (privacy-first defense-in-depth).
+const { formatDisplayName: profileFormatDisplayName } = useProfile();
+const formatDisplayNameLocal = (cachedDisplayName?: string | null): string => {
+  if (!cachedDisplayName || cachedDisplayName === 'Névtelen túrázó') {
+    return 'Névtelen túrázó';
+  }
+  return cachedDisplayName;
+};
 const { fetchOnce: fetchTripWeight, refresh: refreshTripWeight } =
   useTripWeight(tripId.value);
 // P7 / v2 #22 — dedikált composable, NEM useTrips/useStats bővítése
@@ -1242,7 +1253,7 @@ onMounted(async () => {
                 <template v-if="p.user_id">
                   {{
                     p.display_name
-                      ? formatDisplayName(p.display_name)
+                      ? formatDisplayNameLocal(p.display_name)
                       : (p.email ?? (p.user_id.slice(0, 8) + '…'))
                   }}
                 </template>

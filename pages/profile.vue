@@ -11,14 +11,14 @@
  * (displayNameSchema: 1-50 char trim), és a profile tábla
  * CHECK constraint-je a migrációs szinten véd.
  */
-definePageMeta({
-  middleware: 'auth',
+useHead({
   title: 'Profil',
 });
 
-const user = useSupabaseUser();
 const router = useRouter();
-const { state, load, update, isPlaceholderProfile, formatDisplayName } = useProfile();
+const user = useSupabaseUser();
+const profileComposable = useProfile();
+const { state, load, update, isPlaceholderProfile } = profileComposable;
 
 const displayName = ref('');
 const avatarUrl = ref<string | null>(null);
@@ -69,9 +69,15 @@ const handleSave = async () => {
 };
 
 const handleSignOut = async () => {
-  const { signOut } = useSignOut();
-  await signOut();
+  await signOutUser();
+  await router.replace('/signin');
 };
+
+// A useSignOut() composable (composables/useSupabaseUser.ts)-ban definiált.
+// A Nuxt auto-import NEM érhető el a TS-strict típus-rendszerben, ezért
+// közvetlenül importáljuk.
+import { useSignOut } from '~/composables/useSupabaseUser';
+const { signOut: signOutUser } = useSignOut();
 </script>
 
 <template>

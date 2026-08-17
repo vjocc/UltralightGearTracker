@@ -95,12 +95,12 @@ export function useProfile() {
    */
   const formatDisplayName = (
     userId: string,
-    cachedDisplayName?: string | null,
+    cachedDisplayName?: string,
   ): string => {
     // 1. Ha a caller átad explicit display_name-t (pl. a server-oldali
     //    trip_participant_lookup_profiles response-ból), használd azt
-    if (cachedDisplayName !== undefined) {
-      if (isPlaceholderDisplayName(cachedDisplayName)) {
+    if (cachedDisplayName !== undefined && cachedDisplayName !== null) {
+      if (cachedDisplayName === PLACEHOLDER_DISPLAY_NAME) {
         return PLACEHOLDER_DISPLAY_NAME;
       }
       return cachedDisplayName;
@@ -108,8 +108,8 @@ export function useProfile() {
 
     // 2. Ha a cache-ben van (saját session-ből), használd a cache-t
     const cached = state.value.byUserId[userId];
-    if (cached?.display_name !== undefined) {
-      if (isPlaceholderDisplayName(cached.display_name)) {
+    if (cached?.display_name) {
+      if (cached.display_name === PLACEHOLDER_DISPLAY_NAME) {
         return PLACEHOLDER_DISPLAY_NAME;
       }
       return cached.display_name;

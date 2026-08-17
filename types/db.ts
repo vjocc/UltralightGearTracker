@@ -836,6 +836,35 @@ export interface Database {
       trip_recap_photos: TableShape<TripRecapPhotoRow>;
       trip_debriefs: TableShape<TripDebriefRow>;
       funnel_events: TableShape<FunnelEventRow>;
+      /**
+       * Sprint 5 P2.x bugfix — public.profiles tábla (lásd
+       * supabase/migrations/20260817000000_profiles_table.sql). A
+       * RLS Strict owner-scoped (profiles_select_self,
+       * profiles_update_self, profiles_insert_self, profiles_delete_self
+       * policies). Insert/Update során a display_name 1-50 char trim,
+       * NOT NULL.
+       */
+      profiles: {
+        Row: {
+          id: UUID;
+          display_name: string;
+          avatar_url: string | null;
+          bio: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: UUID;
+          display_name: string;
+          avatar_url?: string | null;
+          bio?: string | null;
+        };
+        Update: {
+          display_name?: string;
+          avatar_url?: string | null;
+          bio?: string | null;
+        };
+      };
     };
     Views: {
       gear_base_weights_view: ViewShape<GearBaseWeightRow>;
@@ -883,6 +912,18 @@ export interface Database {
       trip_participant_lookup_emails: {
         Args: { p_user_ids: string[]; p_trip_id: string };
         Returns: Array<{ user_id: string; email: string }>;
+      }
+      // Sprint 5 P2.x bugfix — trip-participant profile lookup RPC
+      // (SECURITY DEFINER). Privacy-first projection:
+      // (user_id, display_name, avatar_url) — email NEM, bio NEM.
+      // A function a meglévő trip_visible_to() függvényt hívja.
+      trip_participant_lookup_profiles: {
+        Args: { p_user_ids: string[]; p_trip_id: string };
+        Returns: Array<{
+          user_id: string;
+          display_name: string | null;
+          avatar_url: string | null;
+        }>;
       }
     };
     Enums: Record<string, never>;
