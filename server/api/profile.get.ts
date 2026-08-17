@@ -1,6 +1,7 @@
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server';
 import type { Database } from '~/types/db';
 import { profileSelfSchema } from '~/shared/profileSchemas';
+import { getUserId } from '~/server/utils/auth';
 
 /**
  * GET /api/profile
@@ -20,12 +21,16 @@ export default defineEventHandler(async (event) => {
     });
   }
 
+  // A serverSupabaseUser() JwtPayload-ot ad (sub = auth.users.uuid), NEM
+  // User típust — getUserId() helper olvassa ki a sub-ot (és fallback az id-re).
+  const userId = getUserId(user);
+
   const supabase = await serverSupabaseClient<Database>(event);
 
   const { data, error } = await supabase
     .from('profiles')
     .select('id, display_name, avatar_url, bio, created_at, updated_at')
-    .eq('id', user.id)
+    .eq('id', userId)
     .maybeSingle();
 
   if (error) {
@@ -39,7 +44,7 @@ export default defineEventHandler(async (event) => {
   // le valamiért), a fallback 'Névtelen túrázó' placeholder.
   if (!data) {
     return {
-      id: user.id,
+      id: userId,
       display_name: 'Névtelen túrázó',
       avatar_url: null,
       bio: null,

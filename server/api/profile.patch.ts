@@ -1,6 +1,7 @@
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server';
 import type { Database } from '~/types/db';
 import { profileUpdateSchema } from '~/shared/profileSchemas';
+import { getUserId } from '~/server/utils/auth';
 
 /**
  * PATCH /api/profile
@@ -13,31 +14,19 @@ import { profileUpdateSchema } from '~/shared/profileSchemas';
  * tábla CHECK constraint-je a migration-ben).
  *
  * Response: a frissített profileSelfSchema szerinti zod-validált JSON.
- *
- * DIAGNOSTIC (Bugfix 2026-08-17 — RLS violation debug):
- *   A user 500-as hibát jelentett a Profil-mentésnél: "new row
- *   violates row-level security policy for table 'profiles'". A
- *   gyanú: a request során az auth.uid() NULL-t ad vissza (a session
- *   NEM propagálódik). Az egyszerűsített diagnosztika CSAK a user.id
- *   meglétét és a sub mezőt logolja a Vercel Dashboard Logs fülön
- *   valós időben megtekinthető formában (a Vercel free-tier logs csak
- *   1 órát őriz, így a tesztnek ÉS a logolásnak egy időben kell
- *   történnie).
  */
 export default defineEventHandler(async (event) => {
   const user = await serverSupabaseUser(event);
-
-  // ── DIAGNOSTIC #2: TELJES user obj dump (user reported user.id is
-  // undefined but user exists: true → property name confusion) ─────────
-  // eslint-disable-next-line no-console
-  console.log('[DIAG] user:', JSON.stringify(user));
-
   if (!user) {
     throw createError({
       statusCode: 401,
       statusMessage: 'Bejelentkezés szükséges',
     });
   }
+
+  // A serverSupabaseUser() JwtPayload-ot ad (sub = auth.users.uuid), NEM
+  // User típust — getUserId() helper olvassa ki a sub-ot (és fallback az id-re).
+  const userId = getUserId(user);
 
   const body = await readBody(event);
   const parsed = profileUpdateSchema.safeParse(body);
@@ -57,7 +46,7 @@ export default defineEventHandler(async (event) => {
   const { data: existing } = await supabase
     .from('profiles')
     .select('id')
-    .eq('id', user.id)
+    .eq('id', userId)
     .maybeSingle();
 
   let data: { id: string; display_name: string; avatar_url: string | null; bio: string | null; created_at: string; updated_at: string } | null = null;
@@ -67,7 +56,7 @@ export default defineEventHandler(async (event) => {
     const { data: inserted, error: insertErr } = await supabase
       .from('profiles')
       .insert({
-        id: user.id,
+        id: userId,
         display_name: parsed.data.display_name,
         avatar_url: parsed.data.avatar_url ?? null,
         bio: parsed.data.bio ?? null,
@@ -90,7 +79,7 @@ export default defineEventHandler(async (event) => {
         avatar_url: parsed.data.avatar_url ?? null,
         bio: parsed.data.bio ?? null,
       })
-      .eq('id', user.id)
+      .eq('id', userId)
       .select('id, display_name, avatar_url, bio, created_at, updated_at')
       .maybeSingle();
     if (updateErr || !updated) {

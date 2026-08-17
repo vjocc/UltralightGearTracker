@@ -1,5 +1,6 @@
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server';
 import type { Database, TripStatsRow } from '~/types/db';
+import { getUserId } from '~/server/utils/auth';
 
 /**
  * GET /api/stats
@@ -34,6 +35,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
+  const userId = getUserId(user);
   const supabase = await serverSupabaseClient<Database>(event);
 
   // 1) Aggregated stats from the trip_stats VIEW.
@@ -43,7 +45,7 @@ export default defineEventHandler(async (event) => {
   const { data: statsRow, error: statsError } = await supabase
     .from('trip_stats')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .maybeSingle();
 
   if (statsError) {

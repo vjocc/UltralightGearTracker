@@ -1,5 +1,6 @@
 import { serverSupabaseUser } from '#supabase/server';
 import { getServiceRoleClient } from '~/server/utils/publicShareClient';
+import { getUserId } from '~/server/utils/auth';
 import { z } from 'zod';
 
 /**
@@ -82,16 +83,18 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // Security: a body.user_id CSAK a saját auth.uid()-val egyezhet meg.
+  const sessionUserId = getUserId(user);
+
+  // Security: a body.user_id CSAK a saját session user_id-val egyezhet meg.
   // Így a user nem küldhet más user nevében event-et.
-  if (parsed.data.user_id && parsed.data.user_id !== user.id) {
+  if (parsed.data.user_id && parsed.data.user_id !== sessionUserId) {
     throw createError({
       statusCode: 400,
       statusMessage: 'A user_id nem egyezik a session user_id-val',
     });
   }
 
-  const insertUserId = parsed.data.user_id ?? user.id;
+  const insertUserId = parsed.data.user_id ?? sessionUserId;
 
   // Dupla guard: ha az adott (user_id, event_name) már létezik,
   // nem írunk duplikált sort — idempotens visszatérés 200 + no-op.

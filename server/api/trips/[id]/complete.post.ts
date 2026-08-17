@@ -1,5 +1,6 @@
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server';
 import type { Database } from '~/types/db';
+import { getUserId } from '~/server/utils/auth';
 
 /**
  * POST /api/trips/:id/complete
@@ -51,9 +52,11 @@ export default defineEventHandler(async (event) => {
 
   const supabase = await serverSupabaseClient<Database>(event);
 
+  const userId = getUserId(user);
+
   // Owner-only UPDATE. RLS Strict — a trips UPDATE policy
   // (auth.uid() = user_id) silently drops non-owner rows. A
-  // `.single()` + `.eq('id', tripId)` + `.eq('user_id', user.id)`
+  // `.single()` + `.eq('id', tripId)` + `.eq('user_id', userId)`
   // dual-condition kettős védelmet ad (ha bármiért a trips
   // RLS policy lazulna, a második feltétel még mindig
   // owner-only-t tart).
@@ -61,7 +64,7 @@ export default defineEventHandler(async (event) => {
     .from('trips')
     .update({ completed_at: new Date().toISOString() })
     .eq('id', tripId)
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .select()
     .single();
 

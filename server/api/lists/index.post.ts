@@ -1,6 +1,7 @@
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server';
 import type { Database, PublicListRow } from '~/types/db';
 import { publicListUpsertSchema } from '~/server/utils/publicListSchemas';
+import { getUserId } from '~/server/utils/auth';
 
 /**
  * POST /api/lists
@@ -35,6 +36,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Not signed in' });
   }
 
+  // A serverSupabaseUser() JwtPayload-ot ad (sub = auth.users.uuid) — getUserId helper.
+  const userId = getUserId(user);
+
   const body = await readBody(event);
   const parsed = publicListUpsertSchema.safeParse(body);
   if (!parsed.success) {
@@ -54,7 +58,7 @@ export default defineEventHandler(async (event) => {
     .from('public_lists')
     .upsert(
       {
-        user_id: user.id,
+        user_id: userId,
         is_public: parsed.data.is_public,
         label: parsed.data.label ?? null,
         expires_at: parsed.data.expires_at ?? null,

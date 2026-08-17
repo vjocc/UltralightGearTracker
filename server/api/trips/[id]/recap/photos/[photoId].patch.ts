@@ -1,6 +1,7 @@
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server';
 import type { Database, TripRecapPhotoRow } from '~/types/db';
 import { photoPatchSchema } from '~/server/utils/recapSchemas';
+import { getUserId } from '~/server/utils/auth';
 
 /**
  * PATCH /api/trips/:id/recap/photos/:photoId
@@ -56,9 +57,7 @@ export default defineEventHandler(async (event) => {
       statusMessage: 'A túra nem található',
     });
   }
-  const callerId = (user as { sub?: string; id?: string }).sub
-    ?? (user as { id?: string }).id
-    ?? '';
+  const callerId = getUserId(user);
   if (tripRow.user_id !== callerId) {
     throw createError({
       statusCode: 404,
