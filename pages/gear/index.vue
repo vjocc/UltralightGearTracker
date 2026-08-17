@@ -44,11 +44,18 @@ const supabase = useSupabaseClient();
 // törlése miatt a page-szintű computed újra true lesz) a forcedComplete
 // flag tiszta lappal indul a panel életciklusából.
 const panelRef = useTemplateRef<{ forcedComplete: boolean }>('onboardingPanel');
+// NOTE: a showOnboarding computed NEM olvassa a panelRef.value-t
+// közvetlenül — a Vite 5 minifier 'g before initialization' TDZ
+// hibát dob egyes chunk-cache-ekben (a setup function paraméter 'g'
+// névre van minify-olva, ÉS a `f.value?.forcedComplete` referencia
+// NINCS garancia setup-on belül). A panel a `forcedComplete` flag-et
+// lokálisan kezeli (a panel életciklusán belül re-mountol, ha az item
+// count visszaesik). A page-szintű showOnboarding Csak az item-számot
+// és a user-t figyeli — a panel mount/unmount ciklusa maga állítja
+// elő az új A./B./C. fázist, amikor az item-szám átlépi a KÜSZÖB-öt.
 const showOnboarding = computed(
   () =>
-    state.value.items.length < ONBOARDING_KÜSZÖB &&
-    !!user.value &&
-    !panelRef.value?.forcedComplete
+    state.value.items.length < ONBOARDING_KÜSZÖB && !!user.value
 );
 
 // Gated by middleware; this is a defensive guard for SSR pre-hydration.
