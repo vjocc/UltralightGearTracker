@@ -1,22 +1,21 @@
 <script setup lang="ts">
 /**
- * App header — site nav + auth state + incoming trip-invite badge.
+ * App header — site nav + incoming trip-invite badge.
  *
  * Two render modes driven by useSupabaseUser().value:
  *   - anonymous: "Belépés" + "Regisztráció" links
- *   - authenticated: lowercase email + invite badge + "Kijelentkezés" button
+ *   - authenticated: nav links + invite badge (NO email / NO signout —
+ *     those moved to /profile per 2026-08-17 bugfix request, both are
+ *     redundant since the user can edit their profile and sign out
+ *     from the dedicated /profile page)
  *
  * The badge shows the count of pending invites where the caller is the
  * invitee (cross-trip, status='incoming'). Click → navigates to the
  * first pending invite's trip so the user can review and accept.
- *
- * Kijelentkezés uses useSignOut() which clears the Supabase session and
- * forces a hard reload to /signin so the middleware re-evaluates.
  */
 import type { TripShareInviteRow } from '~/types/db';
 
 const user = useSupabaseUser();
-const signOut = useSignOut();
 const route = useRoute();
 
 const { listIncomingInvites } = useTrips();
@@ -56,10 +55,6 @@ const firstIncomingTripId = computed(
 const handleBadgeClick = () => {
   if (!firstIncomingTripId.value) return;
   void navigateTo(`/trips/${firstIncomingTripId.value}`);
-};
-
-const handleSignOut = async () => {
-  await signOut();
 };
 </script>
 
@@ -150,17 +145,13 @@ const handleSignOut = async () => {
             </span>
           </button>
 
-          <span class="hidden text-gray-500 sm:inline">
-            {{ user.email?.toLowerCase() }}
-          </span>
-          <button
-            type="button"
-            aria-label="Kijelentkezés"
-            class="btn-danger px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 hover:border-red-300"
-            @click="handleSignOut"
-          >
-            Kijelentkezés
-          </button>
+          <!--
+            Bugfix 2026-08-17 user feedback: az email-cím és a Kijelentkezés
+            gomb a Profil oldalról elérhető (email alul, Kijelentkezés
+            gomb felső sarokban). Az AppHeader-ben ezek feleslegesek —
+            kiveve. A signOut import + handleSignOut függvény védve van,
+            hogy a Profil oldal változatlanul használhassa (pages/profile.vue).
+          -->
         </template>
         <template v-else>
           <NuxtLink
