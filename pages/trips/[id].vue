@@ -1254,7 +1254,7 @@ onMounted(async () => {
                   {{
                     p.display_name
                       ? formatDisplayNameLocal(p.display_name)
-                      : (p.email ?? (p.user_id.slice(0, 8) + '…'))
+                      : 'Névtelen túrázó'
                   }}
                 </template>
                 <template v-else>
@@ -1328,7 +1328,7 @@ onMounted(async () => {
             class="flex items-center justify-between gap-2 px-3 py-2 text-xs text-espresso-700"
           >
             <span class="truncate font-medium">
-              {{ p.email ?? (p.user_id ? p.user_id.slice(0, 8) + '…' : 'ismeretlen') }}
+              {{ p.display_name ? formatDisplayNameLocal(p.display_name) : 'Névtelen túrázó' }}
             </span>
             <span
               v-if="p.role === 'owner'"

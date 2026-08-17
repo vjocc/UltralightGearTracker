@@ -34,22 +34,56 @@ export default defineEventHandler(async (event) => {
 
   const supabase = await serverSupabaseClient<Database>(event);
 
-  const { data, error } = await supabase
+  // A meglévő user lehet, hogy nem rendelkezik profiles sorral (a signup
+  // trigger nem futott le). Először SELECT-et végzünk a user_id-vel, és
+  // ha nincs, INSERT-et végzünk. Ez véd a PGRST116 (.single() 0 row) 500
+  // hibától, és a meglévő userek menthetnek nevet.
+  const { data: existing } = await supabase
     .from('profiles')
-    .update({
-      display_name: parsed.data.display_name,
-      avatar_url: parsed.data.avatar_url ?? null,
-      bio: parsed.data.bio ?? null,
-    })
+    .select('id')
     .eq('id', user.id)
-    .select('id, display_name, avatar_url, bio, created_at, updated_at')
-    .single();
+    .maybeSingle();
 
-  if (error || !data) {
-    throw createError({
-      statusCode: 500,
-      statusMessage: `Profile update failed: ${error?.message ?? 'no data'}`,
-    });
+  let data: { id: string; display_name: string; avatar_url: string | null; bio: string | null; created_at: string; updated_at: string } | null = null;
+
+  if (!existing) {
+    // Nincs profiles sor — INSERT-et végzünk (a meglévő user-ek helyzete).
+    const { data: inserted, error: insertErr } = await supabase
+      .from('profiles')
+      .insert({
+        id: user.id,
+        display_name: parsed.data.display_name,
+        avatar_url: parsed.data.avatar_url ?? null,
+        bio: parsed.data.bio ?? null,
+      })
+      .select('id, display_name, avatar_url, bio, created_at, updated_at')
+      .single();
+    if (insertErr || !inserted) {
+      throw createError({
+        statusCode: 500,
+        statusMessage: `Profile insert failed: ${insertErr?.message ?? 'no data'}`,
+      });
+    }
+    data = inserted;
+  } else {
+    // Van profiles sor — UPDATE-et végzünk (.maybeSingle()-nel, nem .single()).
+    const { data: updated, error: updateErr } = await supabase
+      .from('profiles')
+      .update({
+        display_name: parsed.data.display_name,
+        avatar_url: parsed.data.avatar_url ?? null,
+        bio: parsed.data.bio ?? null,
+      })
+      .eq('id', user.id)
+      .select('id, display_name, avatar_url, bio, created_at, updated_at')
+      .maybeSingle();
+    if (updateErr || !updated) {
+      throw createError({
+        statusCode: 500,
+        statusMessage: `Profile update failed: ${updateErr?.message ?? 'no data'}`,
+      });
+    }
+    data = updated;
   }
 
   return data;

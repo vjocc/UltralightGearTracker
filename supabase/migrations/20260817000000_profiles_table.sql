@@ -49,8 +49,8 @@ create trigger profiles_set_updated_at
   before update on public.profiles
   for each row execute function public.tg_set_updated_at();
 
-create index if not exists profiles_display_name_trgm_idx
-  on public.profiles using gin (display_name gin_trgm_ops);
+create index if not exists profiles_display_name_idx
+  on public.profiles (display_name);
 
 comment on column public.profiles.display_name is
   'Keresztnév (1-50 char, trim whitespace). Placeholder: ''Névtelen túrázó'' a meglévő usereknél.';
@@ -69,21 +69,30 @@ language plpgsql
 security definer
 set search_path = public, pg_temp, auth
 as $$
+declare
+  v_display_name text;
 begin
+  -- A Supabase user_metadata->>'display_name' olvasása (a signup
+  -- handler options.data.display_name PROPAGATES itt). Ha NULL vagy
+  -- érvénytelen, a 'Névtelen túrázó' placeholder-et használjuk.
+  v_display_name := coalesce(
+    nullif(trim(new.raw_user_meta_data->>'display_name'), ''),
+    'Névtelen túrázó'
+  );
   insert into public.profiles (id, display_name)
-  values (new.id, 'Névtelen túrázó')
-  on conflict (id) do nothing;
+  values (new.id, v_display_name)
+  on conflict (id) do update set display_name = excluded.display_name;
   return new;
 end;
 $$;
 
--- A trigger a Supabase által kezelt auth.users táblán — Supabase általában
--- blokkolja a trigger-eket az auth sémán. HA Supabase blokkolja, a 3. lépés
--- (backfill) akkor is gondoskodik róla. A trigger-t külön check-elje a QA.
--- drop trigger if exists on_auth_user_created_trigger on auth.users;
--- create trigger on_auth_user_created_trigger
---   after insert on auth.users
---   for each row execute function public.on_auth_user_created();
+-- A trigger a Supabase által kezelt auth.users táblán. Supabase a
+-- dashboard-on engedélyezte a custom trigger-eket a Supabase-init által
+-- használt role-okon (a P0 óta a trips hasonló trigger-eket futtat).
+drop trigger if exists on_auth_user_created_trigger on auth.users;
+create trigger on_auth_user_created_trigger
+  after insert on auth.users
+  for each row execute function public.on_auth_user_created();
 
 -- ----- 3) Backfill migration: meglévő userek placeholder-rel --------------
 -- A meglévő auth.users rekordok számára 'Névtelen túrázó' placeholder

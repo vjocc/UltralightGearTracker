@@ -74,10 +74,10 @@ const handleSignOut = async () => {
 };
 
 // A useSignOut() composable (composables/useSupabaseUser.ts)-ban definiált.
-// A Nuxt auto-import NEM érhető el a TS-strict típus-rendszerben, ezért
-// közvetlenül importáljuk.
+// A `useSignOut()` közvetlenül visszaadja a signOut függvényt, NEM object-et
+// (ld. composables/useSupabaseUser.ts useSignOut definition).
 import { useSignOut } from '~/composables/useSupabaseUser';
-const { signOut: signOutUser } = useSignOut();
+const signOutUser = useSignOut();
 </script>
 
 <template>
