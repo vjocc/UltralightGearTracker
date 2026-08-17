@@ -789,6 +789,14 @@ export function useTrips() {
           id: 'owner',
           user_id: ownerUserId,
           email: state.value.emailById[ownerUserId] ?? null,
+          // Sprint 5 P2.x bugfix — display_name + avatar_url a
+          // TripParticipantRow-ban. A privacy-first projection-t a
+          // resolveParticipantsForTrip hívás feloldja a
+          // trip_participant_lookup_profiles SECURITY DEFINER
+          // function-ből (itt NEM töltünk a cache-ből, NEM szivárogtatjuk
+          // a server-oldali display_name-t egy placeholder mezőben).
+          display_name: null,
+          avatar_url: null,
           role: 'owner',
           status: 'accepted',
         });
@@ -800,6 +808,10 @@ export function useTrips() {
           user_id: inv.invitee_user_id,
           email:
             state.value.emailById[inv.invitee_user_id] ?? inv.invitee_email,
+          // Sprint 5 P2.x bugfix — display_name + avatar_url (NULL
+          // placeholder; a resolveParticipantsForTrip hívás feloldja).
+          display_name: null,
+          avatar_url: null,
           role: 'invitee',
           status: 'accepted',
         });
